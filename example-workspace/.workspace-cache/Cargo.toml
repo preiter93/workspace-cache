@@ -1,0 +1,10 @@
+[package]
+name = "workspace-cache-deps"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+serde = { version = "^1" }
+tokio = { version = "^1" }
