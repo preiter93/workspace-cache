@@ -18,7 +18,7 @@ pub fn get_metadata() -> Result<Metadata, cargo_metadata::Error> {
     MetadataCommand::new().exec()
 }
 
-pub fn extract_dependencies(metadata: &Metadata) -> ExtractedDeps {
+pub fn extract_dependencies(metadata: &Metadata, package_filter: &[String]) -> ExtractedDeps {
     let mut deps: BTreeMap<String, Dependency> = BTreeMap::new();
     let mut dev_deps: BTreeMap<String, Dependency> = BTreeMap::new();
     let mut build_deps: BTreeMap<String, Dependency> = BTreeMap::new();
@@ -26,13 +26,22 @@ pub fn extract_dependencies(metadata: &Metadata) -> ExtractedDeps {
     let workspace_member_ids: std::collections::HashSet<_> =
         metadata.workspace_members.iter().collect();
 
-    for pkg_id in &metadata.workspace_members {
-        let pkg = metadata
-            .packages
+    let packages_to_process: Vec<&Package> = if package_filter.is_empty() {
+        metadata
+            .workspace_members
             .iter()
-            .find(|p| &p.id == pkg_id)
-            .expect("workspace member not found in packages");
+            .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
+            .collect()
+    } else {
+        metadata
+            .workspace_members
+            .iter()
+            .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
+            .filter(|p| package_filter.contains(&p.name))
+            .collect()
+    };
 
+    for pkg in packages_to_process {
         collect_package_deps(
             pkg,
             &workspace_member_ids,

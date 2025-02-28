@@ -290,3 +290,118 @@ serde = { version = "1", features = ["derive"], default-features = false }
         cargo_toml
     );
 }
+
+#[test]
+fn test_package_filter() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-filter");
+    fs::create_dir_all(&workspace_dir).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/common/src")).unwrap();
+
+    fs::write(
+        workspace_dir.join("Cargo.toml"),
+        r#"[workspace]
+members = ["crates/api", "crates/worker", "crates/common"]
+resolver = "2"
+"#,
+    )
+    .unwrap();
+
+    fs::write(
+        workspace_dir.join("crates/common/Cargo.toml"),
+        r#"[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/common/src/lib.rs"), "").unwrap();
+
+    fs::write(
+        workspace_dir.join("crates/api/Cargo.toml"),
+        r#"[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+axum = "0.7"
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+
+    fs::write(
+        workspace_dir.join("crates/worker/Cargo.toml"),
+        r#"[package]
+name = "worker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+tokio = "1"
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_dir.join("crates/worker/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+
+    // Test filtering to only api + common
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps", "-p", "api", "-p", "common"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let cargo_toml = fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.toml")).unwrap();
+
+    assert!(
+        cargo_toml.contains("axum"),
+        "should include axum (api dep): {}",
+        cargo_toml
+    );
+    assert!(
+        cargo_toml.contains("serde"),
+        "should include serde (common dep): {}",
+        cargo_toml
+    );
+    assert!(
+        !cargo_toml.contains("tokio"),
+        "should NOT include tokio (worker dep): {}",
+        cargo_toml
+    );
+}
+
+#[test]
+fn test_build_with_package_filter() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-build-filter");
+    fs::create_dir_all(&workspace_dir).unwrap();
+
+    create_test_workspace(&workspace_dir);
+
+    let output = Command::new(workspace_cache_binary())
+        .args(["build", "-p", "lib-a"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "build -p lib-a failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}

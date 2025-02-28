@@ -11,11 +11,18 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Command {
     /// Generate minimal workspace for dependency caching
-    Deps,
+    Deps {
+        /// Only include dependencies for specific package(s)
+        #[arg(short, long)]
+        package: Vec<String>,
+    },
     /// Build the real workspace
     Build {
         #[arg(long)]
         release: bool,
+        /// Only build specific package(s)
+        #[arg(short, long)]
+        package: Vec<String>,
     },
 }
 
