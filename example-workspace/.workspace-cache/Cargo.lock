@@ -3,6 +3,17 @@
 version = 4
 
 [[package]]
+name = "api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "common",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -91,6 +102,13 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "errno"
@@ -592,10 +610,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "workspace-cache-deps"
+name = "worker"
 version = "0.1.0"
 dependencies = [
- "axum",
+ "common",
  "serde",
  "serde_json",
  "tokio",

@@ -5,29 +5,27 @@ WORKDIR /app
 # Copy workspace-cache binary (pre-built)
 COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
 
-# Copy only manifests first
+# Copy only Cargo manifests first for better layer caching
 COPY Cargo.toml Cargo.lock ./
-COPY crates/common/Cargo.toml ./crates/common/Cargo.toml
 COPY crates/worker/Cargo.toml ./crates/worker/Cargo.toml
+COPY crates/common/Cargo.toml ./crates/common/Cargo.toml
 
-# Create dummy source files so cargo can parse the workspace
-RUN mkdir -p crates/common/src && echo "pub struct Message;" > crates/common/src/lib.rs
-RUN mkdir -p crates/worker/src && echo "fn main() {}" > crates/worker/src/main.rs
+# Create minimal source stubs so cargo can parse the workspace
+RUN mkdir -p crates/worker/src crates/common/src && \
+    echo "fn main() {}" > crates/worker/src/main.rs && \
+    echo "" > crates/common/src/lib.rs
 
-# Generate minimal workspace for worker's dependencies only
+# Generate dependency workspace for worker + common only
 RUN workspace-cache deps -p worker -p common
 
-# Build dependencies (this layer gets cached)
+# Build dependencies (this layer gets cached!)
 RUN cd .workspace-cache && cargo build --release
 
-# Remove dummy sources
-RUN rm -rf crates/common/src crates/worker/src
-
-# Copy actual source code
-COPY crates/common/src ./crates/common/src
+# Copy real source code
 COPY crates/worker/src ./crates/worker/src
+COPY crates/common/src ./crates/common/src
 
-# Build only the worker package
+# Build the worker service (deps already cached - fast!)
 RUN workspace-cache build --release -p worker
 
 FROM debian:bookworm-slim

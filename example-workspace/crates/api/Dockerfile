@@ -2,33 +2,30 @@ FROM rust:1.76 AS builder
 
 WORKDIR /app
 
-# Install workspace-cache
+# Copy workspace-cache binary (pre-built)
 COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
 
-# Copy only manifest files first
+# Copy only Cargo manifests first for better layer caching
 COPY Cargo.toml Cargo.lock ./
 COPY crates/api/Cargo.toml ./crates/api/Cargo.toml
 COPY crates/common/Cargo.toml ./crates/common/Cargo.toml
 
-# Create dummy source files so cargo can parse manifests
+# Create minimal source stubs so cargo can parse the workspace
 RUN mkdir -p crates/api/src crates/common/src && \
     echo "fn main() {}" > crates/api/src/main.rs && \
     echo "" > crates/common/src/lib.rs
 
-# Generate dependency cache for api (includes common as path dep)
+# Generate dependency workspace for api + common only
 RUN workspace-cache deps -p api -p common
 
-# Build dependencies only
+# Build dependencies (this layer gets cached!)
 RUN cd .workspace-cache && cargo build --release
-
-# Remove dummy sources
-RUN rm -rf crates/api/src crates/common/src
 
 # Copy real source code
 COPY crates/api/src ./crates/api/src
 COPY crates/common/src ./crates/common/src
 
-# Build the api service
+# Build the api service (deps already cached - fast!)
 RUN workspace-cache build --release -p api
 
 FROM debian:bookworm-slim
