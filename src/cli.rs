@@ -24,6 +24,12 @@ pub enum Command {
         #[arg(short, long)]
         package: Vec<String>,
     },
+    /// Show which workspace members a package depends on
+    DepsOf {
+        /// Package(s) to analyze
+        #[arg(short, long, required = true)]
+        package: Vec<String>,
+    },
 }
 
 pub fn parse() -> Cli {

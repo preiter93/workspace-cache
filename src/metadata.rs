@@ -1,4 +1,5 @@
 use cargo_metadata::{Metadata, MetadataCommand, Package, Target};
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -39,6 +40,46 @@ pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> Extr
         .collect();
 
     ExtractedWorkspace { members }
+}
+
+pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<String> {
+    let workspace_member_names: HashSet<String> = metadata
+        .workspace_members
+        .iter()
+        .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
+        .map(|p| p.name.clone())
+        .collect();
+
+    let mut result: HashSet<String> = HashSet::new();
+    let mut to_visit: Vec<String> = packages.to_vec();
+
+    while let Some(pkg_name) = to_visit.pop() {
+        if result.contains(&pkg_name) {
+            continue;
+        }
+
+        let pkg = metadata
+            .workspace_members
+            .iter()
+            .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
+            .find(|p| p.name == pkg_name);
+
+        let Some(pkg) = pkg else {
+            continue;
+        };
+
+        result.insert(pkg_name.clone());
+
+        for dep in &pkg.dependencies {
+            if workspace_member_names.contains(&dep.name) && !result.contains(&dep.name) {
+                to_visit.push(dep.name.clone());
+            }
+        }
+    }
+
+    let mut sorted: Vec<String> = result.into_iter().collect();
+    sorted.sort();
+    sorted
 }
 
 fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {

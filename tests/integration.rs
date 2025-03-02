@@ -447,3 +447,121 @@ fn test_shared_target_dir_caches_deps() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+#[test]
+fn test_deps_of_command() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-deps-of");
+    fs::create_dir_all(&workspace_dir).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/common/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/utils/src")).unwrap();
+
+    fs::write(
+        workspace_dir.join("Cargo.toml"),
+        r#"[workspace]
+members = ["crates/api", "crates/worker", "crates/common", "crates/utils"]
+resolver = "2"
+"#,
+    )
+    .unwrap();
+
+    // common depends on utils
+    fs::write(
+        workspace_dir.join("crates/common/Cargo.toml"),
+        r#"[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+utils = { path = "../utils" }
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/common/src/lib.rs"), "").unwrap();
+
+    // utils has no workspace deps
+    fs::write(
+        workspace_dir.join("crates/utils/Cargo.toml"),
+        r#"[package]
+name = "utils"
+version = "0.1.0"
+edition = "2021"
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/utils/src/lib.rs"), "").unwrap();
+
+    // api depends on common (which depends on utils)
+    fs::write(
+        workspace_dir.join("crates/api/Cargo.toml"),
+        r#"[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+
+    // worker depends on common
+    fs::write(
+        workspace_dir.join("crates/worker/Cargo.toml"),
+        r#"[package]
+name = "worker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_dir.join("crates/worker/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+
+    // Test deps-of api: should return api, common, utils
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps-of", "-p", "api"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let deps: Vec<&str> = stdout.lines().collect();
+
+    assert!(deps.contains(&"api"), "should include api itself");
+    assert!(
+        deps.contains(&"common"),
+        "should include common (direct dep)"
+    );
+    assert!(
+        deps.contains(&"utils"),
+        "should include utils (transitive dep)"
+    );
+    assert!(!deps.contains(&"worker"), "should NOT include worker");
+
+    // Test deps-of common: should return common, utils
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps-of", "-p", "common"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let deps: Vec<&str> = stdout.lines().collect();
+
+    assert!(deps.contains(&"common"), "should include common itself");
+    assert!(deps.contains(&"utils"), "should include utils");
+    assert_eq!(deps.len(), 2, "should only have common and utils");
+}

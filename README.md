@@ -45,6 +45,21 @@ workspace-cache build -p api
 workspace-cache build --release -p api
 ```
 
+#### `workspace-cache deps-of`
+
+Shows which workspace members a package depends on (transitively). Useful for determining which packages to pass to `-p`.
+
+```sh
+# Show all workspace members that api depends on
+workspace-cache deps-of -p api
+# Output:
+# api
+# common
+
+# Use it with deps command
+workspace-cache deps $(workspace-cache deps-of -p api | xargs -I{} echo "-p {}")
+```
+
 ## How It Works
 
 1. **Dependency Phase**: The `deps` command creates a mirror of your workspace with stub source files (`fn main() {}` or `// stub`). This minimal workspace has the same structure and dependencies as your real workspace, allowing Cargo to compile and cache all dependencies.
@@ -73,7 +88,11 @@ my-platform/
 ### Building only the API service
 
 ```sh
-# Generate deps for api + common only (excludes worker)
+# First, find which workspace members api depends on
+workspace-cache deps-of -p api
+# Output: api, common
+
+# Generate deps for api and its workspace dependencies
 workspace-cache deps -p api -p common
 
 # Build the dependency cache (use shared target dir)
