@@ -21,7 +21,7 @@ Generates a minimal workspace copy with stub source files, preserving the origin
 workspace-cache deps
 
 # Cache dependencies for specific package(s) only
-workspace-cache deps -p api -p common
+workspace-cache deps -p api
 ```
 
 This creates a `.workspace-cache/` directory containing:
@@ -50,9 +50,7 @@ workspace-cache build --release -p api
 Resolves which workspace members a package depends on (transitively). The `deps` command does this automatically, but this is useful for scripting or understanding your dependency graph.
 
 ```sh
-# Show all workspace members that api depends on
 workspace-cache resolve -p api
-# Output:
 # api
 # common
 # utils
@@ -60,105 +58,85 @@ workspace-cache resolve -p api
 
 ## How It Works
 
-1. **Dependency Phase**: The `deps` command creates a mirror of your workspace with stub source files (`fn main() {}` or `// stub`). This minimal workspace has the same structure and dependencies as your real workspace, allowing Cargo to compile and cache all dependencies.
+1. **Dependency Phase**: The `deps` command creates a mirror of your workspace with stub source files. This minimal workspace has the same structure and dependencies as your real workspace, allowing Cargo to compile and cache all dependencies.
 
-2. **Build Phase**: The `build` command runs `cargo build` on the real workspace. When using a shared target directory, dependencies are already compiled and cached, so only your application code needs to be built.
+2. **Build Phase**: The `build` command runs `cargo build` on the real workspace. Since dependencies are already compiled and cached, only your application code needs to be built.
 
 This approach preserves your exact workspace structure, including:
 - Workspace dependencies (`[workspace.dependencies]`)
 - Path dependencies between members
 - All features and configuration
 
-## Microservice Example
-
-Consider a workspace with multiple microservices:
-
-```
-my-platform/
-├── Cargo.toml
-├── Cargo.lock
-└── crates/
-    ├── api/           # HTTP API service (depends on axum)
-    ├── worker/        # Background worker (depends on tokio)
-    └── common/        # Shared library (depends on serde)
-```
-
-### Building only the API service
-
-```sh
-# Generate deps for api (automatically includes workspace deps like common)
-workspace-cache deps -p api
-
-# Build the dependency cache (use shared target dir)
-cd .workspace-cache && CARGO_TARGET_DIR=../target cargo build --release && cd ..
-
-# Build only the api binary (deps already cached!)
-workspace-cache build --release -p api
-```
-
 ## Docker Example
 
-The tool eliminates manual dummy file creation in Dockerfiles:
-
 ```dockerfile
-FROM rust:1.76 AS builder
-
+FROM rust:1.76-bookworm AS base
 WORKDIR /app
 
-# Copy workspace-cache binary
+# Install workspace-cache
 COPY --from=workspace-cache-image /workspace-cache /usr/local/bin/workspace-cache
 
-# Copy the entire workspace (manifests + source)
+# Prepare dependencies
+FROM base AS planner
 COPY . .
-
-# Generate minimal workspace for api (auto-includes workspace deps)
 RUN workspace-cache deps -p api
 
-# Build dependencies only (this layer gets cached!)
+# Build dependencies
+FROM base AS builder
+COPY --from=planner /app/.workspace-cache ./.workspace-cache
+COPY --from=planner /app/Cargo.lock ./Cargo.lock
 RUN cd .workspace-cache && cargo build --release
 
-# Build the real api service
+# Build the binary
+COPY Cargo.toml Cargo.lock ./
+COPY crates/api crates/api
+COPY crates/common crates/common
 RUN workspace-cache build --release -p api
 
-FROM debian:bookworm-slim
+# Runtime
+FROM debian:bookworm-slim AS runtime
 COPY --from=builder /app/target/release/api /usr/local/bin/api
-CMD ["api"]
+ENTRYPOINT ["/usr/local/bin/api"]
 ```
 
-### Optimized Docker Caching
+### Optimized Layer Caching
 
-For better layer caching, copy only manifests first:
+For better Docker layer caching, copy only manifests in the planner stage:
 
 ```dockerfile
-FROM rust:1.76 AS builder
-
+FROM rust:1.76-bookworm AS base
 WORKDIR /app
-
 COPY --from=workspace-cache-image /workspace-cache /usr/local/bin/workspace-cache
 
-# Copy only Cargo files first (for better caching)
-# Note: must include all workspace members that api depends on
+# Prepare dependencies (manifests only)
+FROM base AS planner
 COPY Cargo.toml Cargo.lock ./
-COPY crates/api/Cargo.toml ./crates/api/Cargo.toml
-COPY crates/common/Cargo.toml ./crates/common/Cargo.toml
+COPY crates/api/Cargo.toml crates/api/Cargo.toml
+COPY crates/common/Cargo.toml crates/common/Cargo.toml
 
-# Create minimal source stubs (required for cargo to parse workspace)
+# Create stub sources for cargo to parse workspace
 RUN mkdir -p crates/api/src crates/common/src && \
     echo "fn main() {}" > crates/api/src/main.rs && \
     echo "" > crates/common/src/lib.rs
 
-# Generate dependency workspace and build deps (auto-includes common)
 RUN workspace-cache deps -p api
+
+# Build dependencies
+FROM base AS builder
+COPY --from=planner /app/.workspace-cache ./.workspace-cache
+COPY --from=planner /app/Cargo.lock ./Cargo.lock
 RUN cd .workspace-cache && cargo build --release
 
-# Now copy real source and build
-COPY crates/api/src ./crates/api/src
-COPY crates/common/src ./crates/common/src
+# Build the binary
+COPY Cargo.toml Cargo.lock ./
+COPY crates/api crates/api
+COPY crates/common crates/common
 RUN workspace-cache build --release -p api
 
-FROM debian:bookworm-slim
+# Runtime
+FROM debian:bookworm-slim AS runtime
 COPY --from=builder /app/target/release/api /usr/local/bin/api
-CMD ["api"]
+ENTRYPOINT ["/usr/local/bin/api"]
 ```
 
 ## Testing
@@ -183,7 +161,10 @@ example-workspace/
     │   ├── Cargo.toml
     │   ├── Dockerfile
     │   └── src/main.rs
-    └── common/
+    ├── common/
+    │   ├── Cargo.toml
+    │   └── src/lib.rs
+    └── utils/
         ├── Cargo.toml
         └── src/lib.rs
 ```
@@ -197,15 +178,15 @@ cargo build --release
 # Go to example workspace
 cd example-workspace
 
-# Generate deps for worker (auto-includes common)
-../target/release/workspace-cache deps -p worker
+# Generate deps for api (auto-resolves common and utils)
+../target/release/workspace-cache deps -p api
 
-# Build dependency cache (with shared target dir)
-cd .workspace-cache && CARGO_TARGET_DIR=../target cargo build --release && cd ..
+# Build dependency cache
+cd .workspace-cache && cargo build --release && cd ..
 
-# Build the worker (deps already cached - very fast!)
-../target/release/workspace-cache build --release -p worker
+# Build the api (deps already cached - very fast!)
+../target/release/workspace-cache build --release -p api
 
 # Run it
-./target/release/worker
+./target/release/api
 ```
