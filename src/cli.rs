@@ -24,8 +24,8 @@ pub enum Command {
         #[arg(short, long)]
         package: Vec<String>,
     },
-    /// Show which workspace members a package depends on
-    DepsOf {
+    /// Resolve which workspace members a package depends on
+    Resolve {
         /// Package(s) to analyze
         #[arg(short, long, required = true)]
         package: Vec<String>,

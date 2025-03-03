@@ -449,7 +449,7 @@ fn test_shared_target_dir_caches_deps() {
 }
 
 #[test]
-fn test_deps_of_command() {
+fn test_resolve_command() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-deps-of");
     fs::create_dir_all(&workspace_dir).unwrap();
@@ -528,9 +528,9 @@ common = { path = "../common" }
     )
     .unwrap();
 
-    // Test deps-of api: should return api, common, utils
+    // Test resolve api: should return api, common, utils
     let output = Command::new(workspace_cache_binary())
-        .args(["deps-of", "-p", "api"])
+        .args(["resolve", "-p", "api"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
@@ -550,9 +550,9 @@ common = { path = "../common" }
     );
     assert!(!deps.contains(&"worker"), "should NOT include worker");
 
-    // Test deps-of common: should return common, utils
+    // Test resolve common: should return common, utils
     let output = Command::new(workspace_cache_binary())
-        .args(["deps-of", "-p", "common"])
+        .args(["resolve", "-p", "common"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();

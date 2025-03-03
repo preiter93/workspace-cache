@@ -45,19 +45,17 @@ workspace-cache build -p api
 workspace-cache build --release -p api
 ```
 
-#### `workspace-cache deps-of`
+#### `workspace-cache resolve`
 
-Shows which workspace members a package depends on (transitively). Useful for determining which packages to pass to `-p`.
+Resolves which workspace members a package depends on (transitively). The `deps` command does this automatically, but this is useful for scripting or understanding your dependency graph.
 
 ```sh
 # Show all workspace members that api depends on
-workspace-cache deps-of -p api
+workspace-cache resolve -p api
 # Output:
 # api
 # common
-
-# Use it with deps command
-workspace-cache deps $(workspace-cache deps-of -p api | xargs -I{} echo "-p {}")
+# utils
 ```
 
 ## How It Works
@@ -88,12 +86,8 @@ my-platform/
 ### Building only the API service
 
 ```sh
-# First, find which workspace members api depends on
-workspace-cache deps-of -p api
-# Output: api, common
-
-# Generate deps for api and its workspace dependencies
-workspace-cache deps -p api -p common
+# Generate deps for api (automatically includes workspace deps like common)
+workspace-cache deps -p api
 
 # Build the dependency cache (use shared target dir)
 cd .workspace-cache && CARGO_TARGET_DIR=../target cargo build --release && cd ..
@@ -117,8 +111,8 @@ COPY --from=workspace-cache-image /workspace-cache /usr/local/bin/workspace-cach
 # Copy the entire workspace (manifests + source)
 COPY . .
 
-# Generate minimal workspace for api + common
-RUN workspace-cache deps -p api -p common
+# Generate minimal workspace for api (auto-includes workspace deps)
+RUN workspace-cache deps -p api
 
 # Build dependencies only (this layer gets cached!)
 RUN cd .workspace-cache && cargo build --release
@@ -143,6 +137,7 @@ WORKDIR /app
 COPY --from=workspace-cache-image /workspace-cache /usr/local/bin/workspace-cache
 
 # Copy only Cargo files first (for better caching)
+# Note: must include all workspace members that api depends on
 COPY Cargo.toml Cargo.lock ./
 COPY crates/api/Cargo.toml ./crates/api/Cargo.toml
 COPY crates/common/Cargo.toml ./crates/common/Cargo.toml
@@ -152,8 +147,8 @@ RUN mkdir -p crates/api/src crates/common/src && \
     echo "fn main() {}" > crates/api/src/main.rs && \
     echo "" > crates/common/src/lib.rs
 
-# Generate dependency workspace and build deps
-RUN workspace-cache deps -p api -p common
+# Generate dependency workspace and build deps (auto-includes common)
+RUN workspace-cache deps -p api
 RUN cd .workspace-cache && cargo build --release
 
 # Now copy real source and build
@@ -202,8 +197,8 @@ cargo build --release
 # Go to example workspace
 cd example-workspace
 
-# Generate deps for worker service only
-../target/release/workspace-cache deps -p worker -p common
+# Generate deps for worker (auto-includes common)
+../target/release/workspace-cache deps -p worker
 
 # Build dependency cache (with shared target dir)
 cd .workspace-cache && CARGO_TARGET_DIR=../target cargo build --release && cd ..

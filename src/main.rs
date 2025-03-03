@@ -26,7 +26,7 @@ fn main() -> Result<()> {
         Command::Build { release, package } => {
             builder::run_build(release, &package)?;
         }
-        Command::DepsOf { package } => {
+        Command::Resolve { package } => {
             let meta = metadata::get_metadata()?;
             let resolved = metadata::resolve_workspace_deps(&meta, &package);
             for name in &resolved {
