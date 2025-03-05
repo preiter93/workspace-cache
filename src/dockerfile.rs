@@ -39,23 +39,16 @@ fn render(config: &DockerfileConfig) -> String {
 
     lines.push("# Build dependencies".to_string());
     lines.push("FROM base AS builder".to_string());
-    lines.push("COPY --from=planner /app/.workspace-cache ./.workspace-cache".to_string());
-    lines.push("COPY --from=planner /app/Cargo.lock ./Cargo.lock".to_string());
-    lines.push("RUN cd .workspace-cache && cargo build --release".to_string());
+    lines.push("COPY --from=planner /app/.workspace-cache .".to_string());
+    lines.push("RUN cargo build --release".to_string());
     lines.push(String::new());
 
     lines.push("# Build the binary".to_string());
-    lines.push("COPY Cargo.toml Cargo.lock ./".to_string());
-
     for member in &config.members {
         let path = member.path.display();
         lines.push(format!("COPY {} {}", path, path));
     }
-
-    lines.push(format!(
-        "RUN workspace-cache build --release -p {}",
-        config.package
-    ));
+    lines.push(format!("RUN cargo build --release -p {}", config.package));
     lines.push(String::new());
 
     lines.push("# Runtime".to_string());
