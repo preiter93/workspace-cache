@@ -56,6 +56,23 @@ workspace-cache resolve -p api
 # utils
 ```
 
+#### `workspace-cache dockerfile`
+
+Generates a Dockerfile for a package, automatically including all required workspace dependencies.
+
+```sh
+# Output to stdout
+workspace-cache dockerfile -p api
+
+# Output to file
+workspace-cache dockerfile -p api -o Dockerfile
+
+# Custom base and runtime images
+workspace-cache dockerfile -p api \
+    --base-image rust:1.80-alpine \
+    --runtime-image alpine:3.20
+```
+
 ## How It Works
 
 1. **Dependency Phase**: The `deps` command creates a mirror of your workspace with stub source files. This minimal workspace has the same structure and dependencies as your real workspace, allowing Cargo to compile and cache all dependencies.
@@ -69,12 +86,18 @@ This approach preserves your exact workspace structure, including:
 
 ## Docker Example
 
-```dockerfile
-FROM rust:1.76-bookworm AS base
-WORKDIR /app
+Generate a Dockerfile automatically:
 
-# Install workspace-cache
-COPY --from=workspace-cache-image /workspace-cache /usr/local/bin/workspace-cache
+```sh
+workspace-cache dockerfile -p api -o Dockerfile
+```
+
+This produces:
+
+```dockerfile
+FROM rust:1.87-bookworm AS base
+WORKDIR /app
+COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
 
 # Prepare dependencies
 FROM base AS planner
@@ -91,6 +114,7 @@ RUN cd .workspace-cache && cargo build --release
 COPY Cargo.toml Cargo.lock ./
 COPY crates/api crates/api
 COPY crates/common crates/common
+COPY crates/utils crates/utils
 RUN workspace-cache build --release -p api
 
 # Runtime
@@ -99,45 +123,7 @@ COPY --from=builder /app/target/release/api /usr/local/bin/api
 ENTRYPOINT ["/usr/local/bin/api"]
 ```
 
-### Optimized Layer Caching
-
-For better Docker layer caching, copy only manifests in the planner stage:
-
-```dockerfile
-FROM rust:1.76-bookworm AS base
-WORKDIR /app
-COPY --from=workspace-cache-image /workspace-cache /usr/local/bin/workspace-cache
-
-# Prepare dependencies (manifests only)
-FROM base AS planner
-COPY Cargo.toml Cargo.lock ./
-COPY crates/api/Cargo.toml crates/api/Cargo.toml
-COPY crates/common/Cargo.toml crates/common/Cargo.toml
-
-# Create stub sources for cargo to parse workspace
-RUN mkdir -p crates/api/src crates/common/src && \
-    echo "fn main() {}" > crates/api/src/main.rs && \
-    echo "" > crates/common/src/lib.rs
-
-RUN workspace-cache deps -p api
-
-# Build dependencies
-FROM base AS builder
-COPY --from=planner /app/.workspace-cache ./.workspace-cache
-COPY --from=planner /app/Cargo.lock ./Cargo.lock
-RUN cd .workspace-cache && cargo build --release
-
-# Build the binary
-COPY Cargo.toml Cargo.lock ./
-COPY crates/api crates/api
-COPY crates/common crates/common
-RUN workspace-cache build --release -p api
-
-# Runtime
-FROM debian:bookworm-slim AS runtime
-COPY --from=builder /app/target/release/api /usr/local/bin/api
-ENTRYPOINT ["/usr/local/bin/api"]
-```
+The key insight: only `.workspace-cache/` and `Cargo.lock` are copied from the planner stage. If source files change but dependencies don't, the `.workspace-cache/` content remains identical, and Docker's layer caching kicks in at the builder stage.
 
 ## Testing
 

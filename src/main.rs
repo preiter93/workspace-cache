@@ -1,5 +1,6 @@
 mod builder;
 mod cli;
+mod dockerfile;
 mod generator;
 mod metadata;
 
@@ -32,6 +33,26 @@ fn main() -> Result<()> {
             for name in &resolved {
                 println!("{}", name);
             }
+        }
+        Command::Dockerfile {
+            package,
+            base_image,
+            runtime_image,
+            output,
+        } => {
+            let meta = metadata::get_metadata()?;
+            let resolved = metadata::resolve_workspace_deps(&meta, &[package.clone()]);
+            let workspace = metadata::extract_workspace(&meta, &resolved);
+
+            let config = dockerfile::DockerfileConfig {
+                package,
+                base_image,
+                runtime_image,
+                members: workspace.members,
+            };
+
+            let output_path = output.as_ref().map(std::path::Path::new);
+            dockerfile::generate(&config, output_path)?;
         }
     }
 

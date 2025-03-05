@@ -30,6 +30,21 @@ pub enum Command {
         #[arg(short, long, required = true)]
         package: Vec<String>,
     },
+    /// Generate a Dockerfile for a package
+    Dockerfile {
+        /// Package to build
+        #[arg(short, long, required = true)]
+        package: String,
+        /// Base image for build stages
+        #[arg(long, default_value = "rust:1.87-bookworm")]
+        base_image: String,
+        /// Runtime image
+        #[arg(long, default_value = "debian:bookworm-slim")]
+        runtime_image: String,
+        /// Output path (default: stdout)
+        #[arg(short, long)]
+        output: Option<String>,
+    },
 }
 
 pub fn parse() -> Cli {
