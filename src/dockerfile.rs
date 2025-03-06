@@ -31,7 +31,7 @@ fn render(config: &DockerfileConfig) -> String {
     );
     lines.push(String::new());
 
-    lines.push("# Prepare dependencies".to_string());
+    lines.push("# Prepare minimal workspace".to_string());
     lines.push("FROM base AS planner".to_string());
     lines.push("COPY . .".to_string());
     lines.push(format!("RUN workspace-cache deps -p {}", config.package));
