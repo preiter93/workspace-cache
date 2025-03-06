@@ -105,17 +105,17 @@ COPY . .
 RUN workspace-cache deps -p api
 
 # Build dependencies
-FROM base AS builder
-COPY --from=planner /app/.workspace-cache ./.workspace-cache
-COPY --from=planner /app/Cargo.lock ./Cargo.lock
-RUN cd .workspace-cache && cargo build --release
+FROM base AS deps
+COPY --from=planner /app/.workspace-cache .
+RUN cargo build --release
 
 # Build the binary
-COPY Cargo.toml Cargo.lock ./
+FROM deps AS builder
+RUN rm -rf crates/api/src crates/common/src crates/utils/src
 COPY crates/api crates/api
 COPY crates/common crates/common
 COPY crates/utils crates/utils
-RUN workspace-cache build --release -p api
+RUN cargo build --release -p api
 
 # Runtime
 FROM debian:bookworm-slim AS runtime
@@ -123,7 +123,12 @@ COPY --from=builder /app/target/release/api /usr/local/bin/api
 ENTRYPOINT ["/usr/local/bin/api"]
 ```
 
-The key insight: only `.workspace-cache/` and `Cargo.lock` are copied from the planner stage. If source files change but dependencies don't, the `.workspace-cache/` content remains identical, and Docker's layer caching kicks in at the builder stage.
+**Stages:**
+1. **base** - installs workspace-cache
+2. **planner** - generates `.workspace-cache/` with filtered workspace
+3. **deps** - builds dependencies (cached as long as deps don't change)
+4. **builder** - copies real source, builds binary
+5. **runtime** - minimal image with just the binary
 
 ## Testing
 

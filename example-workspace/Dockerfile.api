@@ -8,11 +8,13 @@ COPY . .
 RUN workspace-cache deps -p api
 
 # Build dependencies
-FROM base AS builder
+FROM base AS deps
 COPY --from=planner /app/.workspace-cache .
 RUN cargo build --release
 
 # Build the binary
+FROM deps AS builder
+RUN rm -rf crates/api/src crates/common/src crates/utils/src
 COPY crates/api crates/api
 COPY crates/common crates/common
 COPY crates/utils crates/utils

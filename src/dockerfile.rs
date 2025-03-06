@@ -38,12 +38,21 @@ fn render(config: &DockerfileConfig) -> String {
     lines.push(String::new());
 
     lines.push("# Build dependencies".to_string());
-    lines.push("FROM base AS builder".to_string());
+    lines.push("FROM base AS deps".to_string());
     lines.push("COPY --from=planner /app/.workspace-cache .".to_string());
     lines.push("RUN cargo build --release".to_string());
     lines.push(String::new());
 
     lines.push("# Build the binary".to_string());
+    lines.push("FROM deps AS builder".to_string());
+
+    let rm_paths: Vec<String> = config
+        .members
+        .iter()
+        .map(|m| format!("{}/src", m.path.display()))
+        .collect();
+    lines.push(format!("RUN rm -rf {}", rm_paths.join(" ")));
+
     for member in &config.members {
         let path = member.path.display();
         lines.push(format!("COPY {} {}", path, path));
