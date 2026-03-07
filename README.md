@@ -56,7 +56,7 @@ docker run --rm api
 ## How It Works
 
 1. **planner** - Creates a minimal workspace with stub sources for dependency resolution
-2. **deps** - Builds dependencies (cached until Cargo.toml changes)
+2. **deps** - Builds dependencies (cached until any dependency changes)
 3. **builder** - Copies real source and builds binary
 4. **runtime** - Minimal image with just the binary
 
@@ -68,7 +68,7 @@ When source files change but dependencies don't, Docker skips the `deps` stage e
 # Generate Dockerfile
 workspace-cache dockerfile -p <package> [-o <output>] [--base-image <image>] [--runtime-image <image>]
 
-# Generate minimal workspace (used internally)
+# Generate minimal workspace
 workspace-cache deps -p <package>
 
 # Show resolved workspace dependencies
@@ -77,6 +77,34 @@ workspace-cache resolve -p <package>
 # Build workspace
 workspace-cache build [-p <package>] [--release]
 ```
+
+## Testing
+
+Run unit tests:
+
+```sh
+cargo test
+```
+
+Test locally in your workspace:
+
+```sh
+# Generate minimal workspace for a package
+workspace-cache deps -p api
+
+# Build dependencies
+cd .workspace-cache
+cargo build --release
+
+# Copy real sources and build (deps are cached)
+rm -rf crates/api/src crates/common/src
+cp -r ../crates/api/src crates/api/src
+cp -r ../crates/common/src crates/common/src
+cargo build --release -p api
+```
+
+Note: This mirrors how the generated Dockerfile works. The key is building
+the final binary from within `.workspace-cache/` after copying real sources.
 
 ## License
 
