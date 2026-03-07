@@ -66,16 +66,26 @@ When source files change but dependencies don't, Docker skips the `deps` stage e
 
 ```sh
 # Generate Dockerfile
-workspace-cache dockerfile -p <package> [-o <output>] [--base-image <image>] [--runtime-image <image>]
+workspace-cache dockerfile -p <package> [-o <output>] [--base-image <image>] [--runtime-image <image>] [--no-deps]
 
 # Generate minimal workspace
-workspace-cache deps -p <package>
+workspace-cache deps -p <package> [--no-deps]
 
 # Show resolved workspace dependencies
 workspace-cache resolve -p <package>
 
 # Build workspace
 workspace-cache build [-p <package>] [--release]
+```
+
+### No Deps Mode
+
+Use `--no-deps` to skip fetchin dependencies from crates.io for faster builds (~10-15s faster).
+Note: This leads to less optimized caching since any change to a dependency will invalidate the cache.
+
+```sh
+workspace-cache deps -p api --no-deps
+workspace-cache dockerfile -p api --no-deps -o Dockerfile
 ```
 
 ## Testing

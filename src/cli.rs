@@ -15,6 +15,9 @@ pub enum Command {
         /// Only include dependencies for specific package(s)
         #[arg(short, long)]
         package: Vec<String>,
+        /// Skip fetching dependencies (faster, but less optimal caching)
+        #[arg(long)]
+        no_deps: bool,
     },
     /// Build the real workspace
     Build {
@@ -41,9 +44,12 @@ pub enum Command {
         /// Runtime image
         #[arg(long, default_value = "debian:bookworm-slim")]
         runtime_image: String,
-        /// Output path (default: stdout) sg
+        /// Output path (default: stdout)
         #[arg(short, long)]
         output: Option<String>,
+        /// Skip fetching dependencies (faster, but less optimal caching)
+        #[arg(long)]
+        no_deps: bool,
     },
 }
 

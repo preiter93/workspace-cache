@@ -22,8 +22,12 @@ pub struct ExtractedWorkspace {
     pub resolved_packages: HashSet<ResolvedPackage>,
 }
 
-pub fn get_metadata() -> Result<Metadata, cargo_metadata::Error> {
-    MetadataCommand::new().exec()
+pub fn get_metadata(no_deps: bool) -> Result<Metadata, cargo_metadata::Error> {
+    let mut cmd = MetadataCommand::new();
+    if no_deps {
+        cmd.no_deps();
+    }
+    cmd.exec()
 }
 
 pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> ExtractedWorkspace {

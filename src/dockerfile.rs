@@ -11,7 +11,7 @@ RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-c
 # Prepare minimal workspace
 FROM base AS planner
 COPY . .
-RUN workspace-cache deps -p {{ package }}
+RUN workspace-cache deps -p {{ package }}{% if no_deps %} --no-deps{% endif %}
 
 # Build dependencies
 FROM base AS deps
@@ -42,6 +42,7 @@ pub struct DockerfileConfig {
     pub base_image: String,
     pub runtime_image: String,
     pub members: Vec<WorkspaceMember>,
+    pub no_deps: bool,
 }
 
 pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<()> {
@@ -67,6 +68,7 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
             runtime_image => &config.runtime_image,
             package => &config.package,
             members => members,
+            no_deps => config.no_deps,
         })
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 

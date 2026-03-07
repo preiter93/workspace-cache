@@ -11,8 +11,8 @@ fn main() -> Result<()> {
     let cli = cli::parse();
 
     match cli.command {
-        Command::Deps { package } => {
-            let meta = metadata::get_metadata()?;
+        Command::Deps { package, no_deps } => {
+            let meta = metadata::get_metadata(no_deps)?;
 
             let packages = if package.is_empty() {
                 package
@@ -28,7 +28,7 @@ fn main() -> Result<()> {
             builder::run_build(release, &package)?;
         }
         Command::Resolve { package } => {
-            let meta = metadata::get_metadata()?;
+            let meta = metadata::get_metadata(false)?;
             let resolved = metadata::resolve_workspace_deps(&meta, &package);
             for name in &resolved {
                 println!("{name}");
@@ -39,8 +39,9 @@ fn main() -> Result<()> {
             base_image,
             runtime_image,
             output,
+            no_deps,
         } => {
-            let meta = metadata::get_metadata()?;
+            let meta = metadata::get_metadata(false)?;
             let resolved = metadata::resolve_workspace_deps(&meta, std::slice::from_ref(&package));
             let workspace = metadata::extract_workspace(&meta, &resolved);
 
@@ -49,6 +50,7 @@ fn main() -> Result<()> {
                 base_image,
                 runtime_image,
                 members: workspace.members,
+                no_deps,
             };
 
             let output_path = output.as_ref().map(std::path::Path::new);
