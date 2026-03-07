@@ -19,7 +19,7 @@ workspace-cache dockerfile -p api -o Dockerfile
 This produces an optimized multi-stage Dockerfile:
 
 ```dockerfile
-FROM rust:1.87-bookworm AS base
+FROM rust:latest AS base
 WORKDIR /app
 RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 

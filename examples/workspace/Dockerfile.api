@@ -1,4 +1,4 @@
-FROM rust:1.87-bookworm AS base
+FROM rust:1.94-bookworm AS base
 WORKDIR /app
 COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
 

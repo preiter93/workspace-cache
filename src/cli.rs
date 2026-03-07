@@ -36,12 +36,12 @@ pub enum Command {
         #[arg(short, long, required = true)]
         package: String,
         /// Base image for build stages
-        #[arg(long, default_value = "rust:1.87-bookworm")]
+        #[arg(long, default_value = "rust:1.94-bookworm")]
         base_image: String,
         /// Runtime image
         #[arg(long, default_value = "debian:bookworm-slim")]
         runtime_image: String,
-        /// Output path (default: stdout)
+        /// Output path (default: stdout) sg
         #[arg(short, long)]
         output: Option<String>,
     },
