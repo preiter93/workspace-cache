@@ -6,7 +6,7 @@ use std::path::Path;
 
 const TEMPLATE: &str = r#"FROM {{ base_image }} AS base
 WORKDIR /app
-RUN cargo install --git https://github.com/preiter93/workspace-cache
+RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 
 # Prepare minimal workspace
 FROM base AS planner

@@ -5,7 +5,7 @@ Like [cargo-chef](https://github.com/LukeMathWalker/cargo-chef) but focused on *
 ## Installation
 
 ```sh
-cargo install --git https://github.com/preiter93/workspace-cache
+cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 ```
 
 ## Quick Start
@@ -21,7 +21,7 @@ This produces an optimized multi-stage Dockerfile:
 ```dockerfile
 FROM rust:1.87-bookworm AS base
 WORKDIR /app
-RUN cargo install --git https://github.com/preiter93/workspace-cache
+RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 
 # Prepare minimal workspace
 FROM base AS planner
