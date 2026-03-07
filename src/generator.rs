@@ -1,4 +1,4 @@
-use crate::metadata::ExtractedWorkspace;
+use crate::metadata::{ExtractedWorkspace, ResolvedPackage};
 use std::collections::HashSet;
 use std::fs;
 use std::io;
@@ -19,7 +19,7 @@ pub fn generate_minimal_workspace(
     fs::create_dir_all(&cache_dir)?;
 
     copy_workspace_manifest(workspace_root, &cache_dir, workspace)?;
-    copy_lockfile(workspace_root, &cache_dir)?;
+    copy_lockfile(workspace_root, &cache_dir, &workspace.resolved_packages)?;
 
     for member in &workspace.members {
         generate_member_stub(&cache_dir, member, workspace_root)?;
@@ -112,10 +112,38 @@ fn generate_member_stub(
     Ok(())
 }
 
-fn copy_lockfile(workspace_root: &Path, cache_dir: &Path) -> io::Result<()> {
+fn copy_lockfile(
+    workspace_root: &Path,
+    cache_dir: &Path,
+    resolved_packages: &HashSet<ResolvedPackage>,
+) -> io::Result<()> {
     let source = workspace_root.join("Cargo.lock");
-    if source.exists() {
-        fs::copy(&source, cache_dir.join("Cargo.lock"))?;
+    if !source.exists() {
+        return Ok(());
     }
-    Ok(())
+
+    let content = fs::read_to_string(&source)?;
+
+    let mut doc = content
+        .parse::<DocumentMut>()
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    if let Some(packages) = doc.get_mut("package") {
+        if let Some(arr) = packages.as_array_of_tables_mut() {
+            arr.retain(|table| {
+                let name = table.get("name").and_then(|v| v.as_str());
+                let version = table.get("version").and_then(|v| v.as_str());
+
+                match (name, version) {
+                    (Some(n), Some(v)) => resolved_packages.contains(&ResolvedPackage {
+                        name: n.to_string(),
+                        version: v.to_string(),
+                    }),
+                    _ => true,
+                }
+            });
+        }
+    }
+
+    fs::write(cache_dir.join("Cargo.lock"), doc.to_string())
 }

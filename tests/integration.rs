@@ -565,3 +565,189 @@ common = { path = "../common" }
     assert!(deps.contains(&"utils"), "should include utils");
     assert_eq!(deps.len(), 2, "should only have common and utils");
 }
+
+#[test]
+fn test_cargo_lock_filtering() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-lock-filter");
+    fs::create_dir_all(&workspace_dir).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
+
+    fs::write(
+        workspace_dir.join("Cargo.toml"),
+        r#"[workspace]
+members = ["crates/api", "crates/worker"]
+resolver = "2"
+
+[workspace.dependencies]
+serde = "1"
+log = "0.4"
+"#,
+    )
+    .unwrap();
+
+    // api uses serde
+    fs::write(
+        workspace_dir.join("crates/api/Cargo.toml"),
+        r#"[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+
+    // worker uses log
+    fs::write(
+        workspace_dir.join("crates/worker/Cargo.toml"),
+        r#"[package]
+name = "worker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log.workspace = true
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_dir.join("crates/worker/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+
+    // Generate Cargo.lock by running cargo check
+    Command::new("cargo")
+        .args(["generate-lockfile"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    // Generate deps for api only
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps", "-p", "api"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let cargo_lock = fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.lock")).unwrap();
+
+    // Should include api and serde
+    assert!(
+        cargo_lock.contains("name = \"api\""),
+        "should include api: {}",
+        cargo_lock
+    );
+    assert!(
+        cargo_lock.contains("name = \"serde\"") || cargo_lock.contains("name = \"serde_core\""),
+        "should include serde: {}",
+        cargo_lock
+    );
+
+    // Should NOT include worker or log
+    assert!(
+        !cargo_lock.contains("name = \"worker\""),
+        "should NOT include worker: {}",
+        cargo_lock
+    );
+    assert!(
+        !cargo_lock.contains("name = \"log\""),
+        "should NOT include log: {}",
+        cargo_lock
+    );
+}
+
+#[test]
+fn test_workspace_dependencies_filtering() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-filter-deps");
+    fs::create_dir_all(&workspace_dir).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
+
+    fs::write(
+        workspace_dir.join("Cargo.toml"),
+        r#"[workspace]
+members = ["crates/api", "crates/worker"]
+resolver = "2"
+
+[workspace.dependencies]
+axum = "0.7"
+tokio = "1"
+serde = "1"
+"#,
+    )
+    .unwrap();
+
+    // api uses axum and serde, but not tokio
+    fs::write(
+        workspace_dir.join("crates/api/Cargo.toml"),
+        r#"[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum.workspace = true
+serde.workspace = true
+"#,
+    )
+    .unwrap();
+    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+
+    // worker uses tokio, but not axum
+    fs::write(
+        workspace_dir.join("crates/worker/Cargo.toml"),
+        r#"[package]
+name = "worker"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio.workspace = true
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_dir.join("crates/worker/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+
+    // Generate deps for api only
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps", "-p", "api"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let cargo_toml = fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.toml")).unwrap();
+
+    // Should include axum and serde (used by api)
+    assert!(
+        cargo_toml.contains("axum"),
+        "should include axum: {}",
+        cargo_toml
+    );
+    assert!(
+        cargo_toml.contains("serde"),
+        "should include serde: {}",
+        cargo_toml
+    );
+
+    // Should NOT include tokio (only used by worker)
+    assert!(
+        !cargo_toml.contains("tokio"),
+        "should NOT include tokio: {}",
+        cargo_toml
+    );
+}

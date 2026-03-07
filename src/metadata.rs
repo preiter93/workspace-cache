@@ -1,4 +1,4 @@
-use cargo_metadata::{Metadata, MetadataCommand, Package, Target};
+use cargo_metadata::{Metadata, MetadataCommand, Package, PackageId, Target};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -10,9 +10,16 @@ pub struct WorkspaceMember {
     pub bins: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ResolvedPackage {
+    pub name: String,
+    pub version: String,
+}
+
 pub struct ExtractedWorkspace {
     pub members: Vec<WorkspaceMember>,
     pub used_dependencies: HashSet<String>,
+    pub resolved_packages: HashSet<ResolvedPackage>,
 }
 
 pub fn get_metadata() -> Result<Metadata, cargo_metadata::Error> {
@@ -50,9 +57,12 @@ pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> Extr
     let used_dependencies =
         collect_used_dependencies(&packages_to_process, &workspace_member_names);
 
+    let resolved_packages = collect_resolved_packages(metadata, &packages_to_process);
+
     ExtractedWorkspace {
         members,
         used_dependencies,
+        resolved_packages,
     }
 }
 
@@ -64,7 +74,6 @@ fn collect_used_dependencies(
 
     for pkg in packages {
         for dep in &pkg.dependencies {
-            // Skip workspace members
             if workspace_members.contains(&dep.name) {
                 continue;
             }
@@ -73,6 +82,44 @@ fn collect_used_dependencies(
     }
 
     deps
+}
+
+fn collect_resolved_packages(
+    metadata: &Metadata,
+    start_packages: &[&Package],
+) -> HashSet<ResolvedPackage> {
+    let mut resolved = HashSet::new();
+
+    let Some(resolve) = &metadata.resolve else {
+        return resolved;
+    };
+
+    let mut to_visit: Vec<&PackageId> = start_packages.iter().map(|p| &p.id).collect();
+    let mut visited: HashSet<&PackageId> = HashSet::new();
+
+    while let Some(pkg_id) = to_visit.pop() {
+        if visited.contains(pkg_id) {
+            continue;
+        }
+        visited.insert(pkg_id);
+
+        if let Some(pkg) = metadata.packages.iter().find(|p| &p.id == pkg_id) {
+            resolved.insert(ResolvedPackage {
+                name: pkg.name.clone(),
+                version: pkg.version.to_string(),
+            });
+        }
+
+        if let Some(node) = resolve.nodes.iter().find(|n| &n.id == pkg_id) {
+            for dep_id in &node.dependencies {
+                if !visited.contains(dep_id) {
+                    to_visit.push(dep_id);
+                }
+            }
+        }
+    }
+
+    resolved
 }
 
 pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<String> {
