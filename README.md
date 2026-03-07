@@ -21,7 +21,7 @@ This produces an optimized multi-stage Dockerfile:
 ```dockerfile
 FROM rust:1.87-bookworm AS base
 WORKDIR /app
-COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
+RUN cargo install --git https://github.com/preiter93/workspace-cache
 
 # Prepare minimal workspace
 FROM base AS planner
@@ -46,16 +46,10 @@ COPY --from=builder /app/target/release/api /usr/local/bin/api
 ENTRYPOINT ["/usr/local/bin/api"]
 ```
 
-## Building
+## Build & Run
 
 ```sh
-# Build workspace-cache image first
-docker build -t workspace-cache .
-
-# Build your service
 docker build -f Dockerfile -t api .
-
-# Run it
 docker run --rm api
 ```
 
