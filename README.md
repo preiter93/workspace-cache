@@ -5,7 +5,7 @@ Like [cargo-chef](https://github.com/LukeMathWalker/cargo-chef) but focused on *
 ## Installation
 
 ```sh
-cargo install --path .
+cargo install --git https://github.com/preiter93/workspace-cache
 ```
 
 ## Quick Start
