@@ -81,7 +81,7 @@ fn generate_member_stub(
             let bin_dir = src_dir.join("bin");
             fs::create_dir_all(&bin_dir)?;
             for bin in &member.bins {
-                fs::write(bin_dir.join(format!("{}.rs", bin)), "fn main() {}\n")?;
+                fs::write(bin_dir.join(format!("{bin}.rs")), "fn main() {}\n")?;
             }
         }
     }

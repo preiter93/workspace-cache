@@ -31,7 +31,7 @@ fn main() -> Result<()> {
             let meta = metadata::get_metadata()?;
             let resolved = metadata::resolve_workspace_deps(&meta, &package);
             for name in &resolved {
-                println!("{}", name);
+                println!("{name}");
             }
         }
         Command::Dockerfile {
@@ -41,7 +41,7 @@ fn main() -> Result<()> {
             output,
         } => {
             let meta = metadata::get_metadata()?;
-            let resolved = metadata::resolve_workspace_deps(&meta, &[package.clone()]);
+            let resolved = metadata::resolve_workspace_deps(&meta, std::slice::from_ref(&package));
             let workspace = metadata::extract_workspace(&meta, &resolved);
 
             let config = dockerfile::DockerfileConfig {

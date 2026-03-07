@@ -70,11 +70,10 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
         })
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-    match output {
-        Some(path) => std::fs::write(path, dockerfile),
-        None => {
-            io::stdout().write_all(dockerfile.as_bytes())?;
-            Ok(())
-        }
+    if let Some(path) = output {
+        std::fs::write(path, dockerfile)
+    } else {
+        io::stdout().write_all(dockerfile.as_bytes())?;
+        Ok(())
     }
 }

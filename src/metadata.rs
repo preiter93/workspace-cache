@@ -88,8 +88,8 @@ fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {
         .strip_prefix(&metadata.workspace_root)
         .unwrap_or(manifest_dir);
 
-    let is_lib = pkg.targets.iter().any(|t| is_lib_target(t));
-    let is_bin = pkg.targets.iter().any(|t| is_bin_target(t));
+    let is_lib = pkg.targets.iter().any(is_lib_target);
+    let is_bin = pkg.targets.iter().any(is_bin_target);
 
     let bins: Vec<String> = pkg
         .targets
