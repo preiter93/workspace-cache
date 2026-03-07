@@ -12,6 +12,7 @@ pub struct WorkspaceMember {
 
 pub struct ExtractedWorkspace {
     pub members: Vec<WorkspaceMember>,
+    pub used_dependencies: HashSet<String>,
 }
 
 pub fn get_metadata() -> Result<Metadata, cargo_metadata::Error> {
@@ -19,6 +20,13 @@ pub fn get_metadata() -> Result<Metadata, cargo_metadata::Error> {
 }
 
 pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> ExtractedWorkspace {
+    let workspace_member_names: HashSet<String> = metadata
+        .workspace_members
+        .iter()
+        .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
+        .map(|p| p.name.clone())
+        .collect();
+
     let packages_to_process: Vec<&Package> = if package_filter.is_empty() {
         metadata
             .workspace_members
@@ -39,7 +47,32 @@ pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> Extr
         .map(|pkg| extract_member_info(pkg, metadata))
         .collect();
 
-    ExtractedWorkspace { members }
+    let used_dependencies =
+        collect_used_dependencies(&packages_to_process, &workspace_member_names);
+
+    ExtractedWorkspace {
+        members,
+        used_dependencies,
+    }
+}
+
+fn collect_used_dependencies(
+    packages: &[&Package],
+    workspace_members: &HashSet<String>,
+) -> HashSet<String> {
+    let mut deps = HashSet::new();
+
+    for pkg in packages {
+        for dep in &pkg.dependencies {
+            // Skip workspace members
+            if workspace_members.contains(&dep.name) {
+                continue;
+            }
+            deps.insert(dep.name.clone());
+        }
+    }
+
+    deps
 }
 
 pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<String> {

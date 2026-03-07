@@ -1,4 +1,5 @@
-use crate::metadata::{ExtractedWorkspace, WorkspaceMember};
+use crate::metadata::ExtractedWorkspace;
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -17,7 +18,7 @@ pub fn generate_minimal_workspace(
     }
     fs::create_dir_all(&cache_dir)?;
 
-    copy_workspace_manifest(workspace_root, &cache_dir, &workspace.members)?;
+    copy_workspace_manifest(workspace_root, &cache_dir, workspace)?;
     copy_lockfile(workspace_root, &cache_dir)?;
 
     for member in &workspace.members {
@@ -30,7 +31,7 @@ pub fn generate_minimal_workspace(
 fn copy_workspace_manifest(
     workspace_root: &Path,
     cache_dir: &Path,
-    members: &[WorkspaceMember],
+    workspace: &ExtractedWorkspace,
 ) -> io::Result<()> {
     let source = workspace_root.join("Cargo.toml");
     let content = fs::read_to_string(&source)?;
@@ -39,26 +40,44 @@ fn copy_workspace_manifest(
         .parse::<DocumentMut>()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-    if let Some(workspace) = doc.get_mut("workspace") {
-        let member_paths: Array = members
+    if let Some(ws) = doc.get_mut("workspace") {
+        let member_paths: Array = workspace
+            .members
             .iter()
             .map(|m| m.path.display().to_string())
             .collect();
 
-        workspace["members"] = toml_edit::value(member_paths);
+        ws["members"] = toml_edit::value(member_paths);
 
-        // Remove exclude since we're creating a minimal workspace
-        if let Some(table) = workspace.as_table_mut() {
+        if let Some(table) = ws.as_table_mut() {
             table.remove("exclude");
         }
+
+        filter_workspace_dependencies(ws, &workspace.used_dependencies);
     }
 
     fs::write(cache_dir.join("Cargo.toml"), doc.to_string())
 }
 
+fn filter_workspace_dependencies(workspace: &mut toml_edit::Item, used_deps: &HashSet<String>) {
+    if let Some(deps) = workspace.get_mut("dependencies") {
+        if let Some(table) = deps.as_table_mut() {
+            let keys_to_remove: Vec<String> = table
+                .iter()
+                .filter(|(key, _)| !used_deps.contains(*key))
+                .map(|(key, _)| key.to_string())
+                .collect();
+
+            for key in keys_to_remove {
+                table.remove(&key);
+            }
+        }
+    }
+}
+
 fn generate_member_stub(
     cache_dir: &Path,
-    member: &WorkspaceMember,
+    member: &crate::metadata::WorkspaceMember,
     workspace_root: &Path,
 ) -> io::Result<()> {
     let member_dir = cache_dir.join(&member.path);
