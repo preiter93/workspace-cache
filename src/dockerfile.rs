@@ -1,6 +1,41 @@
 use crate::metadata::WorkspaceMember;
+use minijinja::{context, Environment};
+use serde::Serialize;
 use std::io::{self, Write};
 use std::path::Path;
+
+const TEMPLATE: &str = r#"FROM {{ base_image }} AS base
+WORKDIR /app
+COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
+
+# Prepare minimal workspace
+FROM base AS planner
+COPY . .
+RUN workspace-cache deps -p {{ package }}
+
+# Build dependencies
+FROM base AS deps
+COPY --from=planner /app/.workspace-cache .
+RUN cargo build --release
+
+# Build the binary
+FROM deps AS builder
+RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %} {% endif %}{% endfor %}
+{%- for member in members %}
+COPY {{ member.path }} {{ member.path }}
+{%- endfor %}
+RUN cargo build --release -p {{ package }}
+
+# Runtime
+FROM {{ runtime_image }} AS runtime
+COPY --from=builder /app/target/release/{{ package }} /usr/local/bin/{{ package }}
+ENTRYPOINT ["/usr/local/bin/{{ package }}"]
+"#;
+
+#[derive(Serialize)]
+struct MemberContext {
+    path: String,
+}
 
 pub struct DockerfileConfig {
     pub package: String,
@@ -10,7 +45,30 @@ pub struct DockerfileConfig {
 }
 
 pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<()> {
-    let dockerfile = render(config);
+    let mut env = Environment::new();
+    env.add_template("Dockerfile", TEMPLATE)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    let template = env
+        .get_template("Dockerfile")
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+    let members: Vec<MemberContext> = config
+        .members
+        .iter()
+        .map(|m| MemberContext {
+            path: m.path.display().to_string(),
+        })
+        .collect();
+
+    let dockerfile = template
+        .render(context! {
+            base_image => &config.base_image,
+            runtime_image => &config.runtime_image,
+            package => &config.package,
+            members => members,
+        })
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
     match output {
         Some(path) => std::fs::write(path, dockerfile),
@@ -19,57 +77,4 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
             Ok(())
         }
     }
-}
-
-fn render(config: &DockerfileConfig) -> String {
-    let mut lines = Vec::new();
-
-    lines.push(format!("FROM {} AS base", config.base_image));
-    lines.push("WORKDIR /app".to_string());
-    lines.push(
-        "COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache".to_string(),
-    );
-    lines.push(String::new());
-
-    lines.push("# Prepare minimal workspace".to_string());
-    lines.push("FROM base AS planner".to_string());
-    lines.push("COPY . .".to_string());
-    lines.push(format!("RUN workspace-cache deps -p {}", config.package));
-    lines.push(String::new());
-
-    lines.push("# Build dependencies".to_string());
-    lines.push("FROM base AS deps".to_string());
-    lines.push("COPY --from=planner /app/.workspace-cache .".to_string());
-    lines.push("RUN cargo build --release".to_string());
-    lines.push(String::new());
-
-    lines.push("# Build the binary".to_string());
-    lines.push("FROM deps AS builder".to_string());
-
-    let rm_paths: Vec<String> = config
-        .members
-        .iter()
-        .map(|m| format!("{}/src", m.path.display()))
-        .collect();
-    lines.push(format!("RUN rm -rf {}", rm_paths.join(" ")));
-
-    for member in &config.members {
-        let path = member.path.display();
-        lines.push(format!("COPY {} {}", path, path));
-    }
-    lines.push(format!("RUN cargo build --release -p {}", config.package));
-    lines.push(String::new());
-
-    lines.push("# Runtime".to_string());
-    lines.push(format!("FROM {} AS runtime", config.runtime_image));
-    lines.push(format!(
-        "COPY --from=builder /app/target/release/{} /usr/local/bin/{}",
-        config.package, config.package
-    ));
-    lines.push(format!(
-        "ENTRYPOINT [\"/usr/local/bin/{}\"]",
-        config.package
-    ));
-
-    lines.join("\n") + "\n"
 }

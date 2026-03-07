@@ -2,7 +2,7 @@ FROM rust:1.87-bookworm AS base
 WORKDIR /app
 COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
 
-# Prepare dependencies
+# Prepare minimal workspace
 FROM base AS planner
 COPY . .
 RUN workspace-cache deps -p api
