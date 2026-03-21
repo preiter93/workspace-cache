@@ -12,7 +12,7 @@ RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-c
 # Stage 2: Generate minimal workspace with stub sources for dependency resolution
 FROM base AS planner
 COPY . .
-RUN workspace-cache deps --bin {{ bin }}{% if no_deps %} --no-deps{% endif %}
+RUN workspace-cache deps --bin {{ bin }}{% if fast %} --fast{% endif %}
 
 # Stage 3: Build dependencies only (cached until Cargo.toml/Cargo.lock change)
 FROM base AS deps
@@ -49,7 +49,7 @@ pub struct DockerfileConfig {
     pub base_image: String,
     pub runtime_image: String,
     pub members: Vec<WorkspaceMember>,
-    pub no_deps: bool,
+    pub fast: bool,
 }
 
 pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<()> {
@@ -81,7 +81,7 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
             release => release,
             profile_dir => profile_dir,
             members => members,
-            no_deps => config.no_deps,
+            fast => config.fast,
         })
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 

@@ -11,12 +11,8 @@ fn main() -> Result<()> {
     let cli = cli::parse();
 
     match cli.command {
-        Command::Deps {
-            bin,
-            output,
-            no_deps,
-        } => {
-            let meta = metadata::get_metadata(no_deps)?;
+        Command::Deps { bin, output, fast } => {
+            let meta = metadata::get_metadata(fast)?;
 
             let packages = if bin.is_empty() {
                 vec![]
@@ -78,7 +74,7 @@ fn main() -> Result<()> {
             base_image,
             runtime_image,
             output,
-            no_deps,
+            fast,
         } => {
             let meta = metadata::get_metadata(false)?;
             let bin_to_pkg = metadata::resolve_bins_to_packages(&meta, std::slice::from_ref(&bin));
@@ -97,7 +93,7 @@ fn main() -> Result<()> {
                 base_image,
                 runtime_image,
                 members: workspace.members,
-                no_deps,
+                fast,
             };
 
             let output_path = output.as_ref().map(std::path::Path::new);

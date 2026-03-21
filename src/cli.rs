@@ -19,9 +19,9 @@ pub enum Command {
         /// Output directory for the generated workspace (default: .workspace-cache)
         #[arg(short, long)]
         output: Option<String>,
-        /// Skip fetching dependencies (faster, but less optimal caching)
+        /// Fast mode: skip dependency resolution (faster, but less optimal caching)
         #[arg(long)]
-        no_deps: bool,
+        fast: bool,
     },
     /// Build the real workspace
     Build {
@@ -54,9 +54,9 @@ pub enum Command {
         /// Output path (default: stdout)
         #[arg(short, long)]
         output: Option<String>,
-        /// Skip fetching dependencies (faster, but less optimal caching)
+        /// Fast mode: skip dependency resolution (faster, but less optimal caching)
         #[arg(long)]
-        no_deps: bool,
+        fast: bool,
     },
 }
 

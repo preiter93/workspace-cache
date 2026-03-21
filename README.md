@@ -76,7 +76,7 @@ Options:
 - `-o, --output <path>` - Output path (default: stdout)
 - `--base-image <image>` - Base image for build stages (default: `rust:1.94-bookworm`)
 - `--runtime-image <image>` - Runtime image (default: `debian:bookworm-slim`)
-- `--no-deps` - Skip fetching dependencies for faster generation
+- `--fast` - Fast mode: skip dependency resolution for faster generation
 
 Examples:
 ```sh
@@ -99,7 +99,7 @@ workspace-cache deps [OPTIONS]
 Options:
 - `--bin <binary>` - Only include dependencies for specific binary/binaries
 - `-o, --output <dir>` - Output directory (default: `.workspace-cache`)
-- `--no-deps` - Skip fetching dependencies from crates.io
+- `--fast` - Fast mode: skip dependency resolution
 
 Examples:
 ```sh
@@ -143,14 +143,14 @@ workspace-cache build
 workspace-cache build --bin api --release
 ```
 
-## No Deps Mode
+## Fast Mode
 
-Use `--no-deps` to skip fetching dependencies from crates.io for faster builds (~10-15s faster).
+Use `--fast` to skip dependency resolution for faster builds (~10-15s faster).
 Note: This leads to less optimized caching since any change to a dependency will invalidate the cache.
 
 ```sh
-workspace-cache deps --bin api --no-deps
-workspace-cache dockerfile --bin api --no-deps -o Dockerfile
+workspace-cache deps --bin api --fast
+workspace-cache dockerfile --bin api --fast -o Dockerfile
 ```
 
 ## Testing
