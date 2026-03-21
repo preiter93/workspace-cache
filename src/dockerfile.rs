@@ -4,29 +4,34 @@ use serde::Serialize;
 use std::io::{self, Write};
 use std::path::Path;
 
-const TEMPLATE: &str = r#"FROM {{ base_image }} AS base
+const TEMPLATE: &str = r#"# Stage 1: Install workspace-cache tool
+FROM {{ base_image }} AS base
 WORKDIR /app
 RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 
-# Prepare minimal workspace
+# Stage 2: Generate minimal workspace with stub sources for dependency resolution
 FROM base AS planner
 COPY . .
 RUN workspace-cache deps --bin {{ bin }}{% if no_deps %} --no-deps{% endif %}
 
-# Build dependencies
+# Stage 3: Build dependencies only (cached until Cargo.toml/Cargo.lock change)
 FROM base AS deps
 COPY --from=planner /app/.workspace-cache .
 RUN cargo build{% if release %} --release{% endif %}
 
-# Build the binary
+# Stage 4: Build the actual binary with real source code
 FROM deps AS builder
 RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %} {% endif %}{% endfor %}
 {%- for member in members %}
 COPY {{ member.path }} {{ member.path }}
 {%- endfor %}
+# Clean workspace crates to force rebuild with real sources. Docker COPY
+# preserves original file mtimes, which confuses cargo's fingerprinting.
+# This only removes workspace crate artifacts - dependencies stay cached.
+RUN cargo clean{% if release %} --release{% endif %}{% for member in members %} -p {{ member.name }}{% endfor %}
 RUN cargo build{% if release %} --release{% endif %} --bin {{ bin }}
 
-# Runtime
+# Stage 5: Minimal runtime image
 FROM {{ runtime_image }} AS runtime
 COPY --from=builder /app/target/{{ profile_dir }}/{{ bin }} /usr/local/bin/{{ bin }}
 ENTRYPOINT ["/usr/local/bin/{{ bin }}"]
@@ -34,6 +39,7 @@ ENTRYPOINT ["/usr/local/bin/{{ bin }}"]
 
 #[derive(Serialize)]
 struct MemberContext {
+    name: String,
     path: String,
 }
 
@@ -59,6 +65,7 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
         .members
         .iter()
         .map(|m| MemberContext {
+            name: m.name.clone(),
             path: m.path.display().to_string(),
         })
         .collect();

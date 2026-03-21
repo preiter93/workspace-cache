@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct WorkspaceMember {
+    pub name: String,
     pub path: PathBuf,
     pub is_bin: bool,
     pub is_lib: bool,
@@ -223,6 +224,7 @@ fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {
         .collect();
 
     WorkspaceMember {
+        name: pkg.name.clone(),
         path: relative_path.as_std_path().to_path_buf(),
         is_bin,
         is_lib,
