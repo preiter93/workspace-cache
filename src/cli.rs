@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "workspace-cache")]
+#[command(version)]
 #[command(about = "Optimizes dependency caching for Rust workspaces")]
 pub struct Cli {
     #[command(subcommand)]
