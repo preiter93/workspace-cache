@@ -36,7 +36,7 @@ pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> Extr
         .workspace_members
         .iter()
         .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
-        .map(|p| p.name.clone())
+        .map(|p| p.name.to_string())
         .collect();
 
     let packages_to_process: Vec<&Package> = if package_filter.is_empty() {
@@ -50,7 +50,7 @@ pub fn extract_workspace(metadata: &Metadata, package_filter: &[String]) -> Extr
             .workspace_members
             .iter()
             .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
-            .filter(|p| package_filter.contains(&p.name))
+            .filter(|p| package_filter.contains(&p.name.to_string()))
             .collect()
     };
 
@@ -79,10 +79,11 @@ fn collect_used_dependencies(
 
     for pkg in packages {
         for dep in &pkg.dependencies {
-            if workspace_members.contains(&dep.name) {
+            let dep_name = dep.name.to_string();
+            if workspace_members.contains(&dep_name) {
                 continue;
             }
-            deps.insert(dep.name.clone());
+            deps.insert(dep_name);
         }
     }
 
@@ -110,7 +111,7 @@ fn collect_resolved_packages(
 
         if let Some(pkg) = metadata.packages.iter().find(|p| &p.id == pkg_id) {
             resolved.insert(ResolvedPackage {
-                name: pkg.name.clone(),
+                name: pkg.name.to_string(),
                 version: pkg.version.to_string(),
             });
         }
@@ -132,7 +133,7 @@ pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<S
         .workspace_members
         .iter()
         .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
-        .map(|p| p.name.clone())
+        .map(|p| p.name.to_string())
         .collect();
 
     let mut result: HashSet<String> = HashSet::new();
@@ -147,7 +148,7 @@ pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<S
             .workspace_members
             .iter()
             .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
-            .find(|p| p.name == pkg_name);
+            .find(|p| p.name.to_string() == pkg_name);
 
         let Some(pkg) = pkg else {
             continue;
@@ -156,8 +157,9 @@ pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<S
         result.insert(pkg_name.clone());
 
         for dep in &pkg.dependencies {
-            if workspace_member_names.contains(&dep.name) && !result.contains(&dep.name) {
-                to_visit.push(dep.name.clone());
+            let dep_name = dep.name.to_string();
+            if workspace_member_names.contains(&dep_name) && !result.contains(&dep_name) {
+                to_visit.push(dep_name);
             }
         }
     }
@@ -180,10 +182,10 @@ pub fn resolve_bins_to_packages(metadata: &Metadata, bins: &[String]) -> HashMap
             let has_bin = pkg
                 .targets
                 .iter()
-                .any(|t| is_bin_target(t) && t.name == *bin_name);
+                .any(|t| is_bin_target(t) && t.name.to_string() == *bin_name);
 
             if has_bin {
-                bin_to_package.insert(bin_name.clone(), pkg.name.clone());
+                bin_to_package.insert(bin_name.clone(), pkg.name.to_string());
                 break;
             }
         }
@@ -202,7 +204,7 @@ pub fn get_all_bins(metadata: &Metadata) -> Vec<String> {
             pkg.targets
                 .iter()
                 .filter(|t| is_bin_target(t))
-                .map(|t| t.name.clone())
+                .map(|t| t.name.to_string())
         })
         .collect()
 }
@@ -220,11 +222,11 @@ fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {
         .targets
         .iter()
         .filter(|t| is_bin_target(t))
-        .map(|t| t.name.clone())
+        .map(|t| t.name.to_string())
         .collect();
 
     WorkspaceMember {
-        name: pkg.name.clone(),
+        name: pkg.name.to_string(),
         path: relative_path.as_std_path().to_path_buf(),
         is_bin,
         is_lib,
@@ -234,15 +236,16 @@ fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {
 
 fn is_lib_target(target: &Target) -> bool {
     target.kind.iter().any(|k| {
-        k == "lib"
-            || k == "rlib"
-            || k == "dylib"
-            || k == "staticlib"
-            || k == "cdylib"
-            || k == "proc-macro"
+        let kind = k.to_string();
+        kind == "lib"
+            || kind == "rlib"
+            || kind == "dylib"
+            || kind == "staticlib"
+            || kind == "cdylib"
+            || kind == "proc-macro"
     })
 }
 
 fn is_bin_target(target: &Target) -> bool {
-    target.kind.iter().any(|k| k == "bin")
+    target.kind.iter().any(|k| k.to_string() == "bin")
 }
