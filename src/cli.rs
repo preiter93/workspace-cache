@@ -45,6 +45,12 @@ pub enum Command {
         /// Build profile (release or debug)
         #[arg(long, default_value = "release")]
         profile: String,
+        /// Install workspace-cache from git instead of crates.io
+        #[arg(long)]
+        from_git: bool,
+        /// Version of workspace-cache to install (default: current version)
+        #[arg(long)]
+        tool_version: Option<String>,
         /// Base image for build stages
         #[arg(long, default_value = "rust:1.94-bookworm")]
         base_image: String,

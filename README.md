@@ -5,6 +5,12 @@ Like [cargo-chef](https://github.com/LukeMathWalker/cargo-chef) but focused on *
 ## Installation
 
 ```sh
+cargo install workspace-cache
+```
+
+Or install from git for the latest development version:
+
+```sh
 cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 ```
 
@@ -19,28 +25,30 @@ workspace-cache dockerfile --bin api -o Dockerfile
 This produces an optimized multi-stage Dockerfile:
 
 ```dockerfile
-FROM rust:latest AS base
+# Stage 1: Install workspace-cache tool
+FROM rust:1.94-bookworm AS base
 WORKDIR /app
-RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
+RUN cargo install workspace-cache@0.1.0
 
-# Prepare minimal workspace
+# Stage 2: Generate minimal workspace with stub sources
 FROM base AS planner
 COPY . .
 RUN workspace-cache deps --bin api
 
-# Build dependencies
+# Stage 3: Build dependencies only (cached until Cargo.toml/Cargo.lock change)
 FROM base AS deps
 COPY --from=planner /app/.workspace-cache .
 RUN cargo build --release
 
-# Build the binary
+# Stage 4: Build the actual binary with real source code
 FROM deps AS builder
 RUN rm -rf crates/api/src crates/common/src
 COPY crates/api crates/api
 COPY crates/common crates/common
+RUN cargo clean --release -p api -p common
 RUN cargo build --release --bin api
 
-# Runtime
+# Stage 5: Minimal runtime image
 FROM debian:bookworm-slim AS runtime
 COPY --from=builder /app/target/release/api /usr/local/bin/api
 ENTRYPOINT ["/usr/local/bin/api"]
@@ -56,7 +64,7 @@ docker run --rm api
 ## How It Works
 
 1. **planner** - Creates a minimal workspace with stub sources for dependency resolution
-2. **deps** - Builds dependencies (cached until any dependency changes)
+2. **deps** - Builds dependencies (cached until Cargo.toml/Cargo.lock changes)
 3. **builder** - Copies real source and builds binary
 4. **runtime** - Minimal image with just the binary
 
@@ -76,6 +84,8 @@ Options:
 - `-o, --output <path>` - Output path (default: stdout)
 - `--base-image <image>` - Base image for build stages (default: `rust:1.94-bookworm`)
 - `--runtime-image <image>` - Runtime image (default: `debian:bookworm-slim`)
+- `--tool-version <version>` - Version of workspace-cache to install (default: current version)
+- `--from-git` - Install workspace-cache from git instead of crates.io
 - `--fast` - Fast mode: skip dependency resolution for faster generation
 
 Examples:
@@ -85,6 +95,12 @@ workspace-cache dockerfile --bin api -o Dockerfile
 
 # Generate debug Dockerfile
 workspace-cache dockerfile --bin api --profile debug -o Dockerfile.debug
+
+# Use a specific version
+workspace-cache dockerfile --bin api --tool-version 0.1.0 -o Dockerfile
+
+# Install from git (latest dev version)
+workspace-cache dockerfile --bin api --from-git -o Dockerfile
 
 # Custom base image
 workspace-cache dockerfile --bin api --base-image rust:1.80-alpine -o Dockerfile

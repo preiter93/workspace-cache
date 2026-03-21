@@ -71,6 +71,8 @@ fn main() -> Result<()> {
         Command::Dockerfile {
             bin,
             profile,
+            from_git,
+            tool_version,
             base_image,
             runtime_image,
             output,
@@ -94,6 +96,8 @@ fn main() -> Result<()> {
                 runtime_image,
                 members: workspace.members,
                 fast,
+                from_git,
+                tool_version,
             };
 
             let output_path = output.as_ref().map(std::path::Path::new);

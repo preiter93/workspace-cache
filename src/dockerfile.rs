@@ -4,12 +4,18 @@ use serde::Serialize;
 use std::io::{self, Write};
 use std::path::Path;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 const TEMPLATE: &str = r#"# Stage 1: Install workspace-cache tool
 FROM {{ base_image }} AS base
 WORKDIR /app
+{% if from_git -%}
 RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
+{% else -%}
+RUN cargo install workspace-cache@{{ version }}
+{% endif %}
 
-# Stage 2: Generate minimal workspace with stub sources for dependency resolution
+# Stage 2: Generate minimal workspace with stub sources
 FROM base AS planner
 COPY . .
 RUN workspace-cache deps --bin {{ bin }}{% if fast %} --fast{% endif %}
@@ -25,7 +31,6 @@ RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %
 {%- for member in members %}
 COPY {{ member.path }} {{ member.path }}
 {%- endfor %}
-# Clean stale artifacts so cargo rebuilds with real sources.
 RUN cargo clean{% if release %} --release{% endif %}{% for member in members %} -p {{ member.name }}{% endfor %}
 RUN cargo build{% if release %} --release{% endif %} --bin {{ bin }}
 
@@ -48,6 +53,8 @@ pub struct DockerfileConfig {
     pub runtime_image: String,
     pub members: Vec<WorkspaceMember>,
     pub fast: bool,
+    pub from_git: bool,
+    pub tool_version: Option<String>,
 }
 
 pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<()> {
@@ -80,6 +87,8 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
             profile_dir => profile_dir,
             members => members,
             fast => config.fast,
+            from_git => config.from_git,
+            version => config.tool_version.as_deref().unwrap_or(VERSION),
         })
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
