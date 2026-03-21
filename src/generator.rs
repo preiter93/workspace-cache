@@ -61,17 +61,17 @@ fn copy_workspace_manifest(
 }
 
 fn filter_workspace_dependencies(workspace: &mut toml_edit::Item, used_deps: &HashSet<String>) {
-    if let Some(deps) = workspace.get_mut("dependencies") {
-        if let Some(table) = deps.as_table_mut() {
-            let keys_to_remove: Vec<String> = table
-                .iter()
-                .filter(|(key, _)| !used_deps.contains(*key))
-                .map(|(key, _)| key.to_string())
-                .collect();
+    if let Some(deps) = workspace.get_mut("dependencies")
+        && let Some(table) = deps.as_table_mut()
+    {
+        let keys_to_remove: Vec<String> = table
+            .iter()
+            .filter(|(key, _)| !used_deps.contains(*key))
+            .map(|(key, _)| key.to_string())
+            .collect();
 
-            for key in keys_to_remove {
-                table.remove(&key);
-            }
+        for key in keys_to_remove {
+            table.remove(&key);
         }
     }
 }
@@ -129,21 +129,21 @@ fn copy_lockfile(
         .parse::<DocumentMut>()
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-    if let Some(packages) = doc.get_mut("package") {
-        if let Some(arr) = packages.as_array_of_tables_mut() {
-            arr.retain(|table| {
-                let name = table.get("name").and_then(|v| v.as_str());
-                let version = table.get("version").and_then(|v| v.as_str());
+    if let Some(packages) = doc.get_mut("package")
+        && let Some(arr) = packages.as_array_of_tables_mut()
+    {
+        arr.retain(|table| {
+            let name = table.get("name").and_then(|v| v.as_str());
+            let version = table.get("version").and_then(|v| v.as_str());
 
-                match (name, version) {
-                    (Some(n), Some(v)) => resolved_packages.contains(&ResolvedPackage {
-                        name: n.to_string(),
-                        version: v.to_string(),
-                    }),
-                    _ => true,
-                }
-            });
-        }
+            match (name, version) {
+                (Some(n), Some(v)) => resolved_packages.contains(&ResolvedPackage {
+                    name: n.to_string(),
+                    version: v.to_string(),
+                }),
+                _ => true,
+            }
+        });
     }
 
     fs::write(cache_dir.join("Cargo.lock"), doc.to_string())
