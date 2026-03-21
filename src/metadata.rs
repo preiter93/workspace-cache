@@ -79,7 +79,7 @@ fn collect_used_dependencies(
 
     for pkg in packages {
         for dep in &pkg.dependencies {
-            let dep_name = dep.name.to_string();
+            let dep_name = dep.name.clone();
             if workspace_members.contains(&dep_name) {
                 continue;
             }
@@ -148,7 +148,7 @@ pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<S
             .workspace_members
             .iter()
             .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
-            .find(|p| p.name.to_string() == pkg_name);
+            .find(|p| p.name == pkg_name);
 
         let Some(pkg) = pkg else {
             continue;
@@ -157,7 +157,7 @@ pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<S
         result.insert(pkg_name.clone());
 
         for dep in &pkg.dependencies {
-            let dep_name = dep.name.to_string();
+            let dep_name = dep.name.clone();
             if workspace_member_names.contains(&dep_name) && !result.contains(&dep_name) {
                 to_visit.push(dep_name);
             }
@@ -182,7 +182,7 @@ pub fn resolve_bins_to_packages(metadata: &Metadata, bins: &[String]) -> HashMap
             let has_bin = pkg
                 .targets
                 .iter()
-                .any(|t| is_bin_target(t) && t.name.to_string() == *bin_name);
+                .any(|t| is_bin_target(t) && t.name.clone() == *bin_name);
 
             if has_bin {
                 bin_to_package.insert(bin_name.clone(), pkg.name.to_string());
@@ -204,7 +204,7 @@ pub fn get_all_bins(metadata: &Metadata) -> Vec<String> {
             pkg.targets
                 .iter()
                 .filter(|t| is_bin_target(t))
-                .map(|t| t.name.to_string())
+                .map(|t| t.name.clone())
         })
         .collect()
 }
@@ -222,7 +222,7 @@ fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {
         .targets
         .iter()
         .filter(|t| is_bin_target(t))
-        .map(|t| t.name.to_string())
+        .map(|t| t.name.clone())
         .collect();
 
     WorkspaceMember {
