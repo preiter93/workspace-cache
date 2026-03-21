@@ -15,6 +15,9 @@ pub enum Command {
         /// Only include dependencies for specific binary/binaries
         #[arg(long)]
         bin: Vec<String>,
+        /// Output directory for the generated workspace (default: .workspace-cache)
+        #[arg(short, long)]
+        output: Option<String>,
         /// Skip fetching dependencies (faster, but less optimal caching)
         #[arg(long)]
         no_deps: bool,
@@ -38,6 +41,9 @@ pub enum Command {
         /// Binary to build
         #[arg(long, required = true)]
         bin: String,
+        /// Build profile (release or debug)
+        #[arg(long, default_value = "release")]
+        profile: String,
         /// Base image for build stages
         #[arg(long, default_value = "rust:1.94-bookworm")]
         base_image: String,

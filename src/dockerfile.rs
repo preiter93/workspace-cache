@@ -16,7 +16,7 @@ RUN workspace-cache deps --bin {{ bin }}{% if no_deps %} --no-deps{% endif %}
 # Build dependencies
 FROM base AS deps
 COPY --from=planner /app/.workspace-cache .
-RUN cargo build --release
+RUN cargo build{% if release %} --release{% endif %}
 
 # Build the binary
 FROM deps AS builder
@@ -24,11 +24,11 @@ RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %
 {%- for member in members %}
 COPY {{ member.path }} {{ member.path }}
 {%- endfor %}
-RUN cargo build --release --bin {{ bin }}
+RUN cargo build{% if release %} --release{% endif %} --bin {{ bin }}
 
 # Runtime
 FROM {{ runtime_image }} AS runtime
-COPY --from=builder /app/target/release/{{ bin }} /usr/local/bin/{{ bin }}
+COPY --from=builder /app/target/{{ profile_dir }}/{{ bin }} /usr/local/bin/{{ bin }}
 ENTRYPOINT ["/usr/local/bin/{{ bin }}"]
 "#;
 
@@ -39,6 +39,7 @@ struct MemberContext {
 
 pub struct DockerfileConfig {
     pub bin: String,
+    pub profile: String,
     pub base_image: String,
     pub runtime_image: String,
     pub members: Vec<WorkspaceMember>,
@@ -62,11 +63,16 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
         })
         .collect();
 
+    let release = config.profile == "release";
+    let profile_dir = if release { "release" } else { "debug" };
+
     let dockerfile = template
         .render(context! {
             base_image => &config.base_image,
             runtime_image => &config.runtime_image,
             bin => &config.bin,
+            release => release,
+            profile_dir => profile_dir,
             members => members,
             no_deps => config.no_deps,
         })

@@ -11,7 +11,11 @@ fn main() -> Result<()> {
     let cli = cli::parse();
 
     match cli.command {
-        Command::Deps { bin, no_deps } => {
+        Command::Deps {
+            bin,
+            output,
+            no_deps,
+        } => {
             let meta = metadata::get_metadata(no_deps)?;
 
             let packages = if bin.is_empty() {
@@ -42,8 +46,13 @@ fn main() -> Result<()> {
                 workspace.used_dependencies.len(),
                 workspace.resolved_packages.len()
             );
-            generator::generate_minimal_workspace(&workspace, meta.workspace_root.as_std_path())?;
-            println!("Generated .workspace-cache/");
+            generator::generate_minimal_workspace(
+                &workspace,
+                meta.workspace_root.as_std_path(),
+                output.as_deref(),
+            )?;
+            let dir_name = output.as_deref().unwrap_or(generator::DEFAULT_CACHE_DIR);
+            println!("Generated {dir_name}/");
         }
         Command::Build { release, bin } => {
             builder::run_build(release, &bin)?;
@@ -71,6 +80,7 @@ fn main() -> Result<()> {
         }
         Command::Dockerfile {
             bin,
+            profile,
             base_image,
             runtime_image,
             output,
@@ -93,6 +103,7 @@ fn main() -> Result<()> {
 
             let config = dockerfile::DockerfileConfig {
                 bin,
+                profile,
                 base_image,
                 runtime_image,
                 members: workspace.members,

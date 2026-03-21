@@ -13,7 +13,7 @@ cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 Generate a Dockerfile for your service:
 
 ```sh
-workspace-cache dockerfile -p api -o Dockerfile
+workspace-cache dockerfile --bin api -o Dockerfile
 ```
 
 This produces an optimized multi-stage Dockerfile:
@@ -26,7 +26,7 @@ RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-c
 # Prepare minimal workspace
 FROM base AS planner
 COPY . .
-RUN workspace-cache deps -p api
+RUN workspace-cache deps --bin api
 
 # Build dependencies
 FROM base AS deps
@@ -38,7 +38,7 @@ FROM deps AS builder
 RUN rm -rf crates/api/src crates/common/src
 COPY crates/api crates/api
 COPY crates/common crates/common
-RUN cargo build --release -p api
+RUN cargo build --release --bin api
 
 # Runtime
 FROM debian:bookworm-slim AS runtime
@@ -64,28 +64,93 @@ When source files change but dependencies don't, Docker skips the `deps` stage e
 
 ## Commands
 
+### Generate Dockerfile
+
 ```sh
-# Generate Dockerfile
-workspace-cache dockerfile -p <package> [-o <output>] [--base-image <image>] [--runtime-image <image>] [--no-deps]
-
-# Generate minimal workspace
-workspace-cache deps -p <package> [--no-deps]
-
-# Show resolved workspace dependencies
-workspace-cache resolve -p <package>
-
-# Build workspace
-workspace-cache build [-p <package>] [--release]
+workspace-cache dockerfile --bin <binary> [OPTIONS]
 ```
 
-### No Deps Mode
+Options:
+- `--bin <binary>` - Binary to build (required)
+- `--profile <profile>` - Build profile: `release` or `debug` (default: `release`)
+- `-o, --output <path>` - Output path (default: stdout)
+- `--base-image <image>` - Base image for build stages (default: `rust:1.94-bookworm`)
+- `--runtime-image <image>` - Runtime image (default: `debian:bookworm-slim`)
+- `--no-deps` - Skip fetching dependencies for faster generation
 
-Use `--no-deps` to skip fetchin dependencies from crates.io for faster builds (~10-15s faster).
+Examples:
+```sh
+# Generate release Dockerfile (default)
+workspace-cache dockerfile --bin api -o Dockerfile
+
+# Generate debug Dockerfile
+workspace-cache dockerfile --bin api --profile debug -o Dockerfile.debug
+
+# Custom base image
+workspace-cache dockerfile --bin api --base-image rust:1.80-alpine -o Dockerfile
+```
+
+### Generate Minimal Workspace
+
+```sh
+workspace-cache deps [OPTIONS]
+```
+
+Options:
+- `--bin <binary>` - Only include dependencies for specific binary/binaries
+- `-o, --output <dir>` - Output directory (default: `.workspace-cache`)
+- `--no-deps` - Skip fetching dependencies from crates.io
+
+Examples:
+```sh
+# Generate for all workspace binaries
+workspace-cache deps
+
+# Generate for a specific binary
+workspace-cache deps --bin api
+
+# Generate for multiple binaries
+workspace-cache deps --bin api --bin worker
+
+# Custom output directory
+workspace-cache deps --bin api -o my-cache
+```
+
+### Show Resolved Dependencies
+
+```sh
+workspace-cache resolve --bin <binary>
+```
+
+Shows which workspace members a binary depends on.
+
+### Build Workspace
+
+```sh
+workspace-cache build [OPTIONS]
+```
+
+Options:
+- `--bin <binary>` - Only build specific binary/binaries
+- `--release` - Build in release mode
+
+Examples:
+```sh
+# Build all binaries
+workspace-cache build
+
+# Build specific binary in release mode
+workspace-cache build --bin api --release
+```
+
+## No Deps Mode
+
+Use `--no-deps` to skip fetching dependencies from crates.io for faster builds (~10-15s faster).
 Note: This leads to less optimized caching since any change to a dependency will invalidate the cache.
 
 ```sh
-workspace-cache deps -p api --no-deps
-workspace-cache dockerfile -p api --no-deps -o Dockerfile
+workspace-cache deps --bin api --no-deps
+workspace-cache dockerfile --bin api --no-deps -o Dockerfile
 ```
 
 ## Testing
@@ -99,8 +164,8 @@ cargo test
 Test locally in your workspace:
 
 ```sh
-# Generate minimal workspace for a package
-workspace-cache deps -p api
+# Generate minimal workspace for a binary
+workspace-cache deps --bin api
 
 # Build dependencies
 cd .workspace-cache
@@ -110,7 +175,7 @@ cargo build --release
 rm -rf crates/api/src crates/common/src
 cp -r ../crates/api/src crates/api/src
 cp -r ../crates/common/src crates/common/src
-cargo build --release -p api
+cargo build --release --bin api
 ```
 
 Note: This mirrors how the generated Dockerfile works. The key is building

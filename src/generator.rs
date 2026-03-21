@@ -5,13 +5,14 @@ use std::io;
 use std::path::Path;
 use toml_edit::{Array, DocumentMut};
 
-const CACHE_DIR: &str = ".workspace-cache";
+pub const DEFAULT_CACHE_DIR: &str = ".workspace-cache";
 
 pub fn generate_minimal_workspace(
     workspace: &ExtractedWorkspace,
     workspace_root: &Path,
+    output_dir: Option<&str>,
 ) -> io::Result<()> {
-    let cache_dir = workspace_root.join(CACHE_DIR);
+    let cache_dir = workspace_root.join(output_dir.unwrap_or(DEFAULT_CACHE_DIR));
 
     if cache_dir.exists() {
         fs::remove_dir_all(&cache_dir)?;
