@@ -114,6 +114,36 @@ Use `--fast` to skip dependency resolution. This results in a less optimized cac
 workspace-cache dockerfile --bin api --fast -o Dockerfile
 ```
 
+## CI Usage (without Docker)
+
+You can also use workspace-cache in CI without Docker for faster builds:
+
+```yaml
+- name: Install workspace-cache
+  run: cargo install workspace-cache
+
+- name: Generate minimal workspace
+  run: workspace-cache deps --bin api
+
+- name: Build dependencies (cached)
+  run: cargo build --release
+  working-directory: .workspace-cache
+
+- name: Copy real sources
+  run: |
+    rm -rf .workspace-cache/crates/api/src .workspace-cache/crates/common/src
+    cp -r crates/api/src .workspace-cache/crates/api/src
+    cp -r crates/common/src .workspace-cache/crates/common/src
+
+- name: Build binary
+  run: |
+    cargo clean --release -p api -p common
+    cargo build --release --bin api
+  working-directory: .workspace-cache
+```
+
+With CI caching (e.g., `Swatinem/rust-cache`), the dependency build step will be cached until `Cargo.toml` or `Cargo.lock` changes.
+
 ## Other Commands
 
 The following commands are mainly for debugging or understanding how the tool works internally.

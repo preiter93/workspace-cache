@@ -1,5 +1,5 @@
 use crate::metadata::WorkspaceMember;
-use minijinja::{context, Environment};
+use minijinja::{Environment, context};
 use serde::Serialize;
 use std::io::{self, Write};
 use std::path::Path;

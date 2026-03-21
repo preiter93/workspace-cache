@@ -4,7 +4,7 @@ mod dockerfile;
 mod generator;
 mod metadata;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use cli::Command;
 
 fn main() -> Result<()> {

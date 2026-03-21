@@ -27,7 +27,8 @@ jobs:
         with:
           workspaces: |
             . -> target
-            examples/workspace -> target
+            examples/workspace/.workspace-cache -> target
+          cache-on-failure: true
 
       - name: Build workspace-cache
         run: cargo build --release --manifest-path ../../Cargo.toml
