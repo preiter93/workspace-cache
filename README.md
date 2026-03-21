@@ -70,9 +70,9 @@ docker run --rm api
 
 When source files change but dependencies don't, Docker skips the `deps` stage entirely.
 
-## Commands
+## Usage
 
-### Generate Dockerfile
+The main command is `dockerfile`. It generates an optimized Dockerfile for your binary:
 
 ```sh
 workspace-cache dockerfile --bin <binary> [OPTIONS]
@@ -105,6 +105,18 @@ workspace-cache dockerfile --bin api --from-git -o Dockerfile
 # Custom base image
 workspace-cache dockerfile --bin api --base-image rust:1.80-alpine -o Dockerfile
 ```
+
+### Fast Mode
+
+Use `--fast` to skip dependency resolution. This results in a less optimized cache, but speeds up Docker builds as long as no dependencies have changed.
+
+```sh
+workspace-cache dockerfile --bin api --fast -o Dockerfile
+```
+
+## Other Commands
+
+The following commands are mainly for debugging or understanding how the tool works internally.
 
 ### Generate Minimal Workspace
 
@@ -157,16 +169,6 @@ workspace-cache build
 
 # Build specific binary in release mode
 workspace-cache build --bin api --release
-```
-
-## Fast Mode
-
-Use `--fast` to skip dependency resolution for faster builds (~10-15s faster).
-Note: This leads to less optimized caching since any change to a dependency will invalidate the cache.
-
-```sh
-workspace-cache deps --bin api --fast
-workspace-cache dockerfile --bin api --fast -o Dockerfile
 ```
 
 ## Testing
