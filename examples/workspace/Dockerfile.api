@@ -1,6 +1,6 @@
 FROM rust:1.94-bookworm AS base
 WORKDIR /app
-COPY --from=workspace-cache /workspace-cache /usr/local/bin/workspace-cache
+RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 
 # Prepare minimal workspace
 FROM base AS planner

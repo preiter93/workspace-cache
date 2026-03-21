@@ -11,7 +11,7 @@ RUN cargo install --git https://github.com/preiter93/workspace-cache workspace-c
 # Prepare minimal workspace
 FROM base AS planner
 COPY . .
-RUN workspace-cache deps -p {{ package }}{% if no_deps %} --no-deps{% endif %}
+RUN workspace-cache deps --bin {{ bin }}{% if no_deps %} --no-deps{% endif %}
 
 # Build dependencies
 FROM base AS deps
@@ -24,12 +24,12 @@ RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %
 {%- for member in members %}
 COPY {{ member.path }} {{ member.path }}
 {%- endfor %}
-RUN cargo build --release -p {{ package }}
+RUN cargo build --release --bin {{ bin }}
 
 # Runtime
 FROM {{ runtime_image }} AS runtime
-COPY --from=builder /app/target/release/{{ package }} /usr/local/bin/{{ package }}
-ENTRYPOINT ["/usr/local/bin/{{ package }}"]
+COPY --from=builder /app/target/release/{{ bin }} /usr/local/bin/{{ bin }}
+ENTRYPOINT ["/usr/local/bin/{{ bin }}"]
 "#;
 
 #[derive(Serialize)]
@@ -38,7 +38,7 @@ struct MemberContext {
 }
 
 pub struct DockerfileConfig {
-    pub package: String,
+    pub bin: String,
     pub base_image: String,
     pub runtime_image: String,
     pub members: Vec<WorkspaceMember>,
@@ -66,7 +66,7 @@ pub fn generate(config: &DockerfileConfig, output: Option<&Path>) -> io::Result<
         .render(context! {
             base_image => &config.base_image,
             runtime_image => &config.runtime_image,
-            package => &config.package,
+            bin => &config.bin,
             members => members,
             no_deps => config.no_deps,
         })

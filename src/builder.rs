@@ -1,14 +1,14 @@
 use std::process::Command;
 
-pub fn run_build(release: bool, packages: &[String]) -> anyhow::Result<()> {
+pub fn run_build(release: bool, bins: &[String]) -> anyhow::Result<()> {
     let mut args = vec!["build"];
 
-    if packages.is_empty() {
+    if bins.is_empty() {
         args.push("--workspace");
     } else {
-        for pkg in packages {
-            args.push("-p");
-            args.push(pkg);
+        for bin in bins {
+            args.push("--bin");
+            args.push(bin);
         }
     }
 

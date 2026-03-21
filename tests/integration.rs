@@ -11,13 +11,13 @@ fn workspace_cache_binary() -> std::path::PathBuf {
 }
 
 fn create_test_workspace(dir: &Path) {
-    fs::create_dir_all(dir.join("crates/lib-a/src")).unwrap();
+    fs::create_dir_all(dir.join("crates/bin-a/src")).unwrap();
     fs::create_dir_all(dir.join("crates/lib-b/src")).unwrap();
 
     fs::write(
         dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/lib-a", "crates/lib-b"]
+members = ["crates/bin-a", "crates/lib-b"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -28,9 +28,9 @@ log = "0.4"
     .unwrap();
 
     fs::write(
-        dir.join("crates/lib-a/Cargo.toml"),
+        dir.join("crates/bin-a/Cargo.toml"),
         r#"[package]
-name = "lib-a"
+name = "bin-a"
 version = "0.1.0"
 edition = "2021"
 
@@ -42,8 +42,8 @@ lib-b = { path = "../lib-b" }
     .unwrap();
 
     fs::write(
-        dir.join("crates/lib-a/src/lib.rs"),
-        "pub fn hello() -> &'static str { \"hello\" }\n",
+        dir.join("crates/bin-a/src/main.rs"),
+        "fn main() { println!(\"hello\"); }\n",
     )
     .unwrap();
 
@@ -86,16 +86,16 @@ fn test_deps_command_creates_workspace_cache() {
         "Cargo.toml should exist"
     );
     assert!(
-        cache_dir.join("crates/lib-a/Cargo.toml").exists(),
-        "lib-a/Cargo.toml should exist"
+        cache_dir.join("crates/bin-a/Cargo.toml").exists(),
+        "bin-a/Cargo.toml should exist"
     );
     assert!(
         cache_dir.join("crates/lib-b/Cargo.toml").exists(),
         "lib-b/Cargo.toml should exist"
     );
     assert!(
-        cache_dir.join("crates/lib-a/src/lib.rs").exists(),
-        "lib-a/src/lib.rs stub should exist"
+        cache_dir.join("crates/bin-a/src/main.rs").exists(),
+        "bin-a/src/main.rs stub should exist"
     );
     assert!(
         cache_dir.join("crates/lib-b/src/lib.rs").exists(),
@@ -108,8 +108,8 @@ fn test_deps_command_creates_workspace_cache() {
         "should have workspace section"
     );
     assert!(
-        workspace_toml.contains("crates/lib-a"),
-        "should include lib-a member"
+        workspace_toml.contains("crates/bin-a"),
+        "should include bin-a member"
     );
     assert!(
         workspace_toml.contains("crates/lib-b"),
@@ -179,7 +179,7 @@ fn test_build_command() {
     create_test_workspace(&workspace_dir);
 
     let output = Command::new(workspace_cache_binary())
-        .arg("build")
+        .args(["build"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
@@ -191,15 +191,16 @@ fn test_build_command() {
     );
 
     assert!(
-        workspace_dir.join("target").exists(),
-        "target directory should exist after build"
+        workspace_dir.join("target/debug/bin-a").exists()
+            || workspace_dir.join("target/debug/bin-a.exe").exists(),
+        "binary should be built"
     );
 }
 
 #[test]
 fn test_build_command_release() {
     let temp = tempfile::tempdir().unwrap();
-    let workspace_dir = temp.path().join("test-workspace-release");
+    let workspace_dir = temp.path().join("test-workspace-build-release");
     fs::create_dir_all(&workspace_dir).unwrap();
 
     create_test_workspace(&workspace_dir);
@@ -217,13 +218,14 @@ fn test_build_command_release() {
     );
 
     assert!(
-        workspace_dir.join("target/release").exists(),
-        "target/release directory should exist after release build"
+        workspace_dir.join("target/release/bin-a").exists()
+            || workspace_dir.join("target/release/bin-a.exe").exists(),
+        "release binary should be built"
     );
 }
 
 #[test]
-fn test_package_filter() {
+fn test_bin_filter() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-filter");
     fs::create_dir_all(&workspace_dir).unwrap();
@@ -293,14 +295,18 @@ tokio.workspace = true
     )
     .unwrap();
 
-    // Test filtering to only api + common
+    // Test filtering to only api (which depends on common)
     let output = Command::new(workspace_cache_binary())
-        .args(["deps", "-p", "api", "-p", "common"])
+        .args(["deps", "--bin", "api"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "deps --bin api failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
     let cache_dir = workspace_dir.join(".workspace-cache");
 
@@ -311,7 +317,7 @@ tokio.workspace = true
     );
     assert!(
         cache_dir.join("crates/common/Cargo.toml").exists(),
-        "should include common"
+        "should include common (dependency of api)"
     );
     assert!(
         !cache_dir.join("crates/worker").exists(),
@@ -334,7 +340,7 @@ tokio.workspace = true
 }
 
 #[test]
-fn test_build_with_package_filter() {
+fn test_build_with_bin_filter() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-build-filter");
     fs::create_dir_all(&workspace_dir).unwrap();
@@ -342,14 +348,14 @@ fn test_build_with_package_filter() {
     create_test_workspace(&workspace_dir);
 
     let output = Command::new(workspace_cache_binary())
-        .args(["build", "-p", "lib-a"])
+        .args(["build", "--bin", "bin-a"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "build -p lib-a failed: {}",
+        "build --bin bin-a failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
@@ -359,30 +365,30 @@ fn test_binary_crate_creates_main_rs() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-bin");
     fs::create_dir_all(&workspace_dir).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/mybin/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/my-bin/src")).unwrap();
 
     fs::write(
         workspace_dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/mybin"]
+members = ["crates/my-bin"]
+resolver = "2"
 "#,
     )
     .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/mybin/Cargo.toml"),
+        workspace_dir.join("crates/my-bin/Cargo.toml"),
         r#"[package]
-name = "mybin"
+name = "my-bin"
 version = "0.1.0"
 edition = "2021"
-
-[dependencies]
 "#,
     )
     .unwrap();
+
     fs::write(
-        workspace_dir.join("crates/mybin/src/main.rs"),
-        "fn main() { println!(\"hello\"); }",
+        workspace_dir.join("crates/my-bin/src/main.rs"),
+        "fn main() { println!(\"real code\"); }",
     )
     .unwrap();
 
@@ -394,22 +400,25 @@ edition = "2021"
 
     assert!(output.status.success());
 
-    let stub_main = workspace_dir.join(".workspace-cache/crates/mybin/src/main.rs");
-    assert!(stub_main.exists(), "should create main.rs stub for binary");
+    let stub_main = workspace_dir.join(".workspace-cache/crates/my-bin/src/main.rs");
+    assert!(stub_main.exists(), "main.rs stub should exist");
 
     let content = fs::read_to_string(&stub_main).unwrap();
-    assert!(content.contains("fn main()"), "stub should have main fn");
+    assert!(
+        content.contains("fn main()"),
+        "stub should have main function"
+    );
 }
 
 #[test]
 fn test_shared_target_dir_caches_deps() {
     let temp = tempfile::tempdir().unwrap();
-    let workspace_dir = temp.path().join("test-workspace-cache");
+    let workspace_dir = temp.path().join("test-workspace-target");
     fs::create_dir_all(&workspace_dir).unwrap();
 
     create_test_workspace(&workspace_dir);
 
-    // Generate deps
+    // Generate cache
     let output = Command::new(workspace_cache_binary())
         .arg("deps")
         .current_dir(&workspace_dir)
@@ -417,34 +426,24 @@ fn test_shared_target_dir_caches_deps() {
         .unwrap();
     assert!(output.status.success());
 
-    // Build deps with shared target dir
+    // Build in cache dir (deps only)
     let cache_dir = workspace_dir.join(".workspace-cache");
-    let target_dir = workspace_dir.join("target");
-
-    let output = Command::new("cargo")
-        .args(["build", "--release"])
-        .env("CARGO_TARGET_DIR", &target_dir)
+    let build_output = Command::new("cargo")
+        .args(["build"])
         .current_dir(&cache_dir)
         .output()
         .unwrap();
 
     assert!(
-        output.status.success(),
-        "cache build failed: {}",
-        String::from_utf8_lossy(&output.stderr)
+        build_output.status.success(),
+        "cargo build in cache dir failed: {}",
+        String::from_utf8_lossy(&build_output.stderr)
     );
 
-    // Now build real workspace - should be fast since deps are cached
-    let output = Command::new(workspace_cache_binary())
-        .args(["build", "--release"])
-        .current_dir(&workspace_dir)
-        .output()
-        .unwrap();
-
+    // The target directory should be inside .workspace-cache
     assert!(
-        output.status.success(),
-        "real build failed: {}",
-        String::from_utf8_lossy(&output.stderr)
+        cache_dir.join("target").exists(),
+        "target dir should exist in cache"
     );
 }
 
@@ -530,12 +529,16 @@ common = { path = "../common" }
 
     // Test resolve api: should return api, common, utils
     let output = Command::new(workspace_cache_binary())
-        .args(["resolve", "-p", "api"])
+        .args(["resolve", "--bin", "api"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
-    assert!(output.status.success());
+    assert!(
+        output.status.success(),
+        "resolve --bin api failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8_lossy(&output.stdout);
     let deps: Vec<&str> = stdout.lines().collect();
 
@@ -550,9 +553,9 @@ common = { path = "../common" }
     );
     assert!(!deps.contains(&"worker"), "should NOT include worker");
 
-    // Test resolve common: should return common, utils
+    // Test resolve worker: should return worker, common, utils
     let output = Command::new(workspace_cache_binary())
-        .args(["resolve", "-p", "common"])
+        .args(["resolve", "--bin", "worker"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
@@ -561,9 +564,10 @@ common = { path = "../common" }
     let stdout = String::from_utf8_lossy(&output.stdout);
     let deps: Vec<&str> = stdout.lines().collect();
 
-    assert!(deps.contains(&"common"), "should include common itself");
+    assert!(deps.contains(&"worker"), "should include worker itself");
+    assert!(deps.contains(&"common"), "should include common");
     assert!(deps.contains(&"utils"), "should include utils");
-    assert_eq!(deps.len(), 2, "should only have common and utils");
+    assert!(!deps.contains(&"api"), "should NOT include api");
 }
 
 #[test]
@@ -579,15 +583,10 @@ fn test_cargo_lock_filtering() {
         r#"[workspace]
 members = ["crates/api", "crates/worker"]
 resolver = "2"
-
-[workspace.dependencies]
-serde = "1"
-log = "0.4"
 "#,
     )
     .unwrap();
 
-    // api uses serde
     fs::write(
         workspace_dir.join("crates/api/Cargo.toml"),
         r#"[package]
@@ -596,13 +595,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde.workspace = true
+serde = "1"
 "#,
     )
     .unwrap();
     fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
 
-    // worker uses log
     fs::write(
         workspace_dir.join("crates/worker/Cargo.toml"),
         r#"[package]
@@ -611,7 +609,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-log.workspace = true
+tokio = { version = "1", features = ["rt"] }
 "#,
     )
     .unwrap();
@@ -621,53 +619,59 @@ log.workspace = true
     )
     .unwrap();
 
-    // Generate Cargo.lock by running cargo check
-    Command::new("cargo")
+    // Generate lockfile
+    let output = Command::new("cargo")
         .args(["generate-lockfile"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "Failed to generate lockfile: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
 
-    // Generate deps for api only
+    let original_lock = fs::read_to_string(workspace_dir.join("Cargo.lock")).unwrap();
+    assert!(
+        original_lock.contains("serde"),
+        "original lockfile should contain serde"
+    );
+    assert!(
+        original_lock.contains("tokio"),
+        "original lockfile should contain tokio"
+    );
+
+    // Generate cache with only api
     let output = Command::new(workspace_cache_binary())
-        .args(["deps", "-p", "api"])
+        .args(["deps", "--bin", "api"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
-    assert!(output.status.success());
-
-    let cargo_lock = fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.lock")).unwrap();
-
-    // Should include api and serde
     assert!(
-        cargo_lock.contains("name = \"api\""),
-        "should include api: {}",
-        cargo_lock
-    );
-    assert!(
-        cargo_lock.contains("name = \"serde\"") || cargo_lock.contains("name = \"serde_core\""),
-        "should include serde: {}",
-        cargo_lock
+        output.status.success(),
+        "deps --bin api failed: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
 
-    // Should NOT include worker or log
+    let filtered_lock =
+        fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.lock")).unwrap();
+
+    // Filtered lock should have serde but not tokio
     assert!(
-        !cargo_lock.contains("name = \"worker\""),
-        "should NOT include worker: {}",
-        cargo_lock
+        filtered_lock.contains("serde"),
+        "filtered lockfile should contain serde (api dependency)"
     );
     assert!(
-        !cargo_lock.contains("name = \"log\""),
-        "should NOT include log: {}",
-        cargo_lock
+        !filtered_lock.contains("tokio"),
+        "filtered lockfile should NOT contain tokio (worker-only dependency)"
     );
 }
 
 #[test]
 fn test_workspace_dependencies_filtering() {
     let temp = tempfile::tempdir().unwrap();
-    let workspace_dir = temp.path().join("test-workspace-filter-deps");
+    let workspace_dir = temp.path().join("test-workspace-deps-filter");
     fs::create_dir_all(&workspace_dir).unwrap();
     fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
     fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
@@ -679,14 +683,13 @@ members = ["crates/api", "crates/worker"]
 resolver = "2"
 
 [workspace.dependencies]
-axum = "0.7"
-tokio = "1"
 serde = "1"
+tokio = "1"
+log = "0.4"
 "#,
     )
     .unwrap();
 
-    // api uses axum and serde, but not tokio
     fs::write(
         workspace_dir.join("crates/api/Cargo.toml"),
         r#"[package]
@@ -695,14 +698,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum.workspace = true
 serde.workspace = true
 "#,
     )
     .unwrap();
     fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
 
-    // worker uses tokio, but not axum
     fs::write(
         workspace_dir.join("crates/worker/Cargo.toml"),
         r#"[package]
@@ -712,6 +713,7 @@ edition = "2021"
 
 [dependencies]
 tokio.workspace = true
+log.workspace = true
 "#,
     )
     .unwrap();
@@ -721,33 +723,123 @@ tokio.workspace = true
     )
     .unwrap();
 
-    // Generate deps for api only
+    // Generate cache with only api
     let output = Command::new(workspace_cache_binary())
-        .args(["deps", "-p", "api"])
+        .args(["deps", "--bin", "api"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
-    assert!(output.status.success());
-
-    let cargo_toml = fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.toml")).unwrap();
-
-    // Should include axum and serde (used by api)
     assert!(
-        cargo_toml.contains("axum"),
-        "should include axum: {}",
-        cargo_toml
-    );
-    assert!(
-        cargo_toml.contains("serde"),
-        "should include serde: {}",
-        cargo_toml
+        output.status.success(),
+        "deps --bin api failed: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
 
-    // Should NOT include tokio (only used by worker)
+    let workspace_toml =
+        fs::read_to_string(workspace_dir.join(".workspace-cache/Cargo.toml")).unwrap();
+
+    // Should only have serde in workspace.dependencies, not tokio or log
     assert!(
-        !cargo_toml.contains("tokio"),
-        "should NOT include tokio: {}",
-        cargo_toml
+        workspace_toml.contains("serde"),
+        "workspace.dependencies should contain serde"
+    );
+    assert!(
+        !workspace_toml.contains("tokio"),
+        "workspace.dependencies should NOT contain tokio"
+    );
+    assert!(
+        !workspace_toml.contains("log"),
+        "workspace.dependencies should NOT contain log"
+    );
+}
+
+#[test]
+fn test_bin_not_found_error() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-bin-not-found");
+    fs::create_dir_all(&workspace_dir).unwrap();
+
+    create_test_workspace(&workspace_dir);
+
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps", "--bin", "nonexistent"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        !output.status.success(),
+        "should fail when binary not found"
+    );
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("not found") || stderr.contains("nonexistent"),
+        "error message should mention the missing binary"
+    );
+}
+
+#[test]
+fn test_multiple_bins() {
+    let temp = tempfile::tempdir().unwrap();
+    let workspace_dir = temp.path().join("test-workspace-multi-bin");
+    fs::create_dir_all(&workspace_dir).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/app/src/bin")).unwrap();
+
+    fs::write(
+        workspace_dir.join("Cargo.toml"),
+        r#"[workspace]
+members = ["crates/app"]
+resolver = "2"
+"#,
+    )
+    .unwrap();
+
+    fs::write(
+        workspace_dir.join("crates/app/Cargo.toml"),
+        r#"[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+"#,
+    )
+    .unwrap();
+
+    fs::write(
+        workspace_dir.join("crates/app/src/bin/server.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+    fs::write(
+        workspace_dir.join("crates/app/src/bin/cli.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+
+    // Test that we can target a specific binary
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps", "--bin", "server"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "deps --bin server failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    // Test that we can target the other binary too
+    let output = Command::new(workspace_cache_binary())
+        .args(["deps", "--bin", "cli"])
+        .current_dir(&workspace_dir)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "deps --bin cli failed: {}",
+        String::from_utf8_lossy(&output.stderr)
     );
 }

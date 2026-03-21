@@ -1,5 +1,5 @@
 use cargo_metadata::{Metadata, MetadataCommand, Package, PackageId, Target};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -164,6 +164,46 @@ pub fn resolve_workspace_deps(metadata: &Metadata, packages: &[String]) -> Vec<S
     let mut sorted: Vec<String> = result.into_iter().collect();
     sorted.sort();
     sorted
+}
+
+/// Find which package contains each binary and return a mapping of binary name -> package name
+pub fn resolve_bins_to_packages(metadata: &Metadata, bins: &[String]) -> HashMap<String, String> {
+    let mut bin_to_package = HashMap::new();
+
+    for bin_name in bins {
+        for member_id in &metadata.workspace_members {
+            let Some(pkg) = metadata.packages.iter().find(|p| &p.id == member_id) else {
+                continue;
+            };
+
+            let has_bin = pkg
+                .targets
+                .iter()
+                .any(|t| is_bin_target(t) && t.name == *bin_name);
+
+            if has_bin {
+                bin_to_package.insert(bin_name.clone(), pkg.name.clone());
+                break;
+            }
+        }
+    }
+
+    bin_to_package
+}
+
+/// Get all binary names from workspace packages
+pub fn get_all_bins(metadata: &Metadata) -> Vec<String> {
+    metadata
+        .workspace_members
+        .iter()
+        .filter_map(|id| metadata.packages.iter().find(|p| &p.id == id))
+        .flat_map(|pkg| {
+            pkg.targets
+                .iter()
+                .filter(|t| is_bin_target(t))
+                .map(|t| t.name.clone())
+        })
+        .collect()
 }
 
 fn extract_member_info(pkg: &Package, metadata: &Metadata) -> WorkspaceMember {

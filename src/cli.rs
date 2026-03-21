@@ -12,9 +12,9 @@ pub struct Cli {
 pub enum Command {
     /// Generate minimal workspace for dependency caching
     Deps {
-        /// Only include dependencies for specific package(s)
-        #[arg(short, long)]
-        package: Vec<String>,
+        /// Only include dependencies for specific binary/binaries
+        #[arg(long)]
+        bin: Vec<String>,
         /// Skip fetching dependencies (faster, but less optimal caching)
         #[arg(long)]
         no_deps: bool,
@@ -23,21 +23,21 @@ pub enum Command {
     Build {
         #[arg(long)]
         release: bool,
-        /// Only build specific package(s)
-        #[arg(short, long)]
-        package: Vec<String>,
+        /// Only build specific binary/binaries
+        #[arg(long)]
+        bin: Vec<String>,
     },
-    /// Resolve which workspace members a package depends on
+    /// Resolve which workspace members a binary depends on
     Resolve {
-        /// Package(s) to analyze
-        #[arg(short, long, required = true)]
-        package: Vec<String>,
+        /// Binary/binaries to analyze
+        #[arg(long, required = true)]
+        bin: Vec<String>,
     },
-    /// Generate a Dockerfile for a package
+    /// Generate a Dockerfile for a binary
     Dockerfile {
-        /// Package to build
-        #[arg(short, long, required = true)]
-        package: String,
+        /// Binary to build
+        #[arg(long, required = true)]
+        bin: String,
         /// Base image for build stages
         #[arg(long, default_value = "rust:1.94-bookworm")]
         base_image: String,
