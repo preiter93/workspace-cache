@@ -25,9 +25,7 @@ RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %
 {%- for member in members %}
 COPY {{ member.path }} {{ member.path }}
 {%- endfor %}
-# Clean workspace crates to force rebuild with real sources. Docker COPY
-# preserves original file mtimes, which confuses cargo's fingerprinting.
-# This only removes workspace crate artifacts - dependencies stay cached.
+# Clean stale artifacts so cargo rebuilds with real sources.
 RUN cargo clean{% if release %} --release{% endif %}{% for member in members %} -p {{ member.name }}{% endfor %}
 RUN cargo build{% if release %} --release{% endif %} --bin {{ bin }}
 
