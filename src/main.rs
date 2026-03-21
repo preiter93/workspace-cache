@@ -28,9 +28,7 @@ fn main() -> Result<()> {
                     if !bin_to_pkg.contains_key(b) {
                         let available = metadata::get_all_bins(&meta);
                         bail!(
-                            "Binary '{}' not found in workspace. Available binaries: {:?}",
-                            b,
-                            available
+                            "Binary '{b}' not found in workspace. Available binaries: {available:?}"
                         );
                     }
                 }
@@ -64,11 +62,7 @@ fn main() -> Result<()> {
             for b in &bin {
                 if !bin_to_pkg.contains_key(b) {
                     let available = metadata::get_all_bins(&meta);
-                    bail!(
-                        "Binary '{}' not found in workspace. Available binaries: {:?}",
-                        b,
-                        available
-                    );
+                    bail!("Binary '{b}' not found in workspace. Available binaries: {available:?}");
                 }
             }
 
@@ -91,11 +85,7 @@ fn main() -> Result<()> {
 
             let Some(pkg_name) = bin_to_pkg.get(&bin) else {
                 let available = metadata::get_all_bins(&meta);
-                bail!(
-                    "Binary '{}' not found in workspace. Available binaries: {:?}",
-                    bin,
-                    available
-                );
+                bail!("Binary '{bin}' not found in workspace. Available binaries: {available:?}");
             };
 
             let resolved = metadata::resolve_workspace_deps(&meta, std::slice::from_ref(pkg_name));
