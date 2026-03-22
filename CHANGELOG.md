@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0-alpha.2] - 2026-03-22
+## [0.1.0] - 2026-03-22
 
 ### 🚀 Features
 
@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - *(lint)* Satisfy clippy
 - Fix integration tests
 - *(ci)* Default to latest version
+- *(ci)* Fix release workflow
 
 ### 📚 Documentation
 
@@ -22,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - *(example)* Rename example crates to make dependencies clearer
 - *(README)* Update CI usage section
 - *(README)* Mention github action
+- Update description
 
 ### 🔧 Refactor
 
