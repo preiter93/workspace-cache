@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0-alpha.2] - 2026-03-22
+
+### 🚀 Features
+
+- Resolve returns path
+- *(action)* Add install from git option
+- Split action into install & build
+
+### 🐛 Bug Fixes
+
+- *(lint)* Satisfy clippy
+- Fix integration tests
+- *(ci)* Default to latest version
+
+### 📚 Documentation
+
+- *(README)* Document usage in CI
+- *(example)* Rename example crates to make dependencies clearer
+- *(README)* Update CI usage section
+- *(README)* Mention github action
+
+### 🔧 Refactor
+
+- [**breaking**] Rename resolve command to members
+
+### ⚙️ Miscellaneous Tasks
+
+- Add cargo toml metadata
+- Add workflow to build example workspace
+- Fix caching of the example workspace
+- Update to checkout v6
+- Remove debug build artifacts step
+- Use resolve command to discover dependencies
+- Move workspace build in separate action
+- Update to checkout v6
+- *(actions)* Improve output of actions
+
+### Build
+
+- Ignore relase changelog
+
 ## [0.1.0-alpha.1] - 2026-03-21
 
 ### 🚀 Features
