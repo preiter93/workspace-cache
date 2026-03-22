@@ -64,8 +64,10 @@ fn main() -> Result<()> {
 
             let pkgs: Vec<String> = bin_to_pkg.values().cloned().collect();
             let resolved = metadata::resolve_workspace_deps(&meta, &pkgs);
-            for name in &resolved {
-                println!("{name}");
+            let workspace = metadata::extract_workspace(&meta, &resolved);
+
+            for member in &workspace.members {
+                println!("{} {}", member.path.display(), member.name);
             }
         }
         Command::Dockerfile {
