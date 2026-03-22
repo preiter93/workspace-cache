@@ -1,5 +1,7 @@
 # workspace-cache
 
+[![Crate IO](https://img.shields.io/crates/v/workspace-cache?logo=rust&style=flat-square&logoColor=E05D44&color=E05D44)](https://crates.io/crates/workspace-cache) ![Crates.io Downloads](https://img.shields.io/crates/d/workspace-cache?style=flat-square) [![Continuous Integration](https://github.com/preiter93/workspace-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/preiter93/workspace-cache/actions/workflows/ci.yml) [![Deps Status](https://deps.rs/repo/github/preiter93/workspace-cache/status.svg?style=flat-square)](https://deps.rs/repo/github/preiter93/workspace-cache) [![License](https://img.shields.io/crates/l/workspace-cache?style=flat-square&color=09bd66)](./LICENSE)
+
 Like [cargo-chef](https://github.com/LukeMathWalker/cargo-chef) but focused on **Rust workspaces with multiple binaries** (microservices). Generates optimized Dockerfiles with proper layer caching.
 
 ## Installation
