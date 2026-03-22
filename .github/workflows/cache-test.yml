@@ -24,13 +24,17 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install workspace-cache
+        uses: ./.github/actions/install-workspace-cache
+        with:
+          install-from-git: true
+
       - name: Build ${{ matrix.binary }}
         id: build
         uses: ./.github/actions/build-workspace
         with:
           binary: ${{ matrix.binary }}
           working-directory: examples/workspace
-          install-from-git: true
 
       - name: Verify binary
         working-directory: examples/workspace

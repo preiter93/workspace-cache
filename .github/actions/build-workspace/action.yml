@@ -14,14 +14,7 @@ inputs:
     description: 'Working directory containing the workspace'
     required: false
     default: '.'
-  workspace-cache-version:
-    description: 'Version of workspace-cache to install'
-    required: false
-    default: '0.1.0-alpha.1'
-  install-from-git:
-    description: 'Install workspace-cache from git instead of crates.io'
-    required: false
-    default: 'false'
+
 
 outputs:
   binary-path:
@@ -31,15 +24,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install workspace-cache
-      shell: bash
-      run: |
-        if [ "${{ inputs.install-from-git }}" = "true" ]; then
-          cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
-        else
-          cargo install workspace-cache@${{ inputs.workspace-cache-version }}
-        fi
-
     - name: Generate minimal workspace
       shell: bash
       working-directory: ${{ inputs.working-directory }}

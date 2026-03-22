@@ -2,14 +2,18 @@
 
 A GitHub Actions composite action that builds Rust workspace binaries with optimized dependency caching using [workspace-cache](https://github.com/preiter93/workspace-cache).
 
+**Note:** This action requires `workspace-cache` to be installed first. Use the [install-workspace-cache](../install-workspace-cache) action.
+
 ## Usage
 
 ```yaml
+- name: Install workspace-cache
+  uses: ./.github/actions/install-workspace-cache
+
 - name: Build my binary
   uses: ./.github/actions/build-workspace
   with:
     binary: user
-    profile: release
 ```
 
 ## Inputs
@@ -19,8 +23,6 @@ A GitHub Actions composite action that builds Rust workspace binaries with optim
 | `binary` | Name of the binary to build | Yes | - |
 | `profile` | Build profile (`release` or `debug`) | No | `release` |
 | `working-directory` | Directory containing the workspace | No | `.` |
-| `workspace-cache-version` | Version of workspace-cache to install | No | `0.1.0-alpha.1` |
-| `install-from-git` | Install workspace-cache from git instead of crates.io | No | `false` |
 
 ## Outputs
 
@@ -41,7 +43,11 @@ jobs:
       
       - uses: dtolnay/rust-toolchain@stable
       
-      - name: Build User service
+      - name: Install workspace-cache
+        uses: ./.github/actions/install-workspace-cache
+      
+      - name: Build binary
+        id: build
         uses: ./.github/actions/build-workspace
         with:
           binary: user
@@ -50,9 +56,35 @@ jobs:
         run: ${{ steps.build.outputs.binary-path }}
 ```
 
+### Multiple Binaries with Matrix
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        binary: [user, order]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Install workspace-cache
+        uses: ./.github/actions/install-workspace-cache
+      
+      - name: Build ${{ matrix.binary }}
+        uses: ./.github/actions/build-workspace
+        with:
+          binary: ${{ matrix.binary }}
+```
+
 ### Debug Build in Subdirectory
 
 ```yaml
+- name: Install workspace-cache
+  uses: ./.github/actions/install-workspace-cache
+
 - name: Build debug binary
   uses: ./.github/actions/build-workspace
   with:
@@ -61,25 +93,29 @@ jobs:
     working-directory: ./services/user
 ```
 
-### Specific workspace-cache Version
+### Using Latest Development Version
 
 ```yaml
-- name: Build with specific version
-  uses: ./.github/actions/build-workspace
+- name: Install workspace-cache from git
+  uses: ./.github/actions/install-workspace-cache
   with:
-    binary: user
-    workspace-cache-version: 0.1.0
-```
-
-### Install from Git 
-
-```yaml
-- name: Build with latest from git
-  uses: ./.github/actions/build-workspace
-  with:
-    binary: user
     install-from-git: true
+
+- name: Build binary
+  uses: ./.github/actions/build-workspace
+  with:
+    binary: user
 ```
+
+## How It Works
+
+1. **Generate minimal workspace** - Creates `.workspace-cache/` with dependency stubs
+2. **Cache dependencies** - Uses GitHub Actions cache with Cargo.lock hash as key
+3. **Build dependencies** - Compiles external dependencies (cached step)
+4. **Copy real sources** - Replaces stubs with actual workspace code
+5. **Build binary** - Compiles workspace crates with real sources
+
+On subsequent runs, if dependencies haven't changed, step 3 completes in seconds instead of minutes.
 
 ## Caching
 

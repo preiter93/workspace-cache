@@ -118,16 +118,21 @@ workspace-cache dockerfile --bin user --fast -o Dockerfile
 
 ### GitHub Action (Recommended)
 
-The simplest way to use workspace-cache in CI is with the provided composite action:
+The simplest way to use workspace-cache in CI is with the provided composite actions:
 
 ```yaml
+- name: Install workspace-cache
+  uses: preiter93/workspace-cache/.github/actions/install-workspace-cache@main
+
 - name: Build my binary
   uses: preiter93/workspace-cache/.github/actions/build-workspace@main
   with:
     binary: user
 ```
 
-This handles all the caching and build steps automatically. See the [action README](.github/actions/build-workspace/README.md) for more options and examples.
+This handles all the caching and build steps automatically. The `install-workspace-cache` action caches the tool binary for faster subsequent runs. See the action READMEs for more options:
+- [install-workspace-cache](.github/actions/install-workspace-cache/README.md)
+- [build-workspace](.github/actions/build-workspace/README.md)
 
 ### Manual Setup
 
