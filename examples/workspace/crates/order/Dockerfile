@@ -1,13 +1,13 @@
 # Stage 1: Install workspace-cache tool
 FROM rust:1.94-bookworm AS base
 WORKDIR /app
-RUN cargo install workspace-cache@0.1.0-alpha.2
+RUN cargo install workspace-cache@0.1.0
 
 
 # Stage 2: Generate minimal workspace with stub sources
 FROM base AS planner
 COPY . .
-RUN workspace-cache deps --bin order --fast
+RUN workspace-cache deps --bin order
 
 # Stage 3: Build dependencies only (cached until Cargo.toml/Cargo.lock change)
 FROM base AS deps

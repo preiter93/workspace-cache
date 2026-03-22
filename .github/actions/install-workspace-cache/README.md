@@ -13,7 +13,7 @@ A GitHub Actions composite action that installs the [workspace-cache](https://gi
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
-| `version` | Version of workspace-cache to install | No | `0.1.0-alpha.2` |
+| `version` | Version of workspace-cache to install | No | `0.1.0` |
 | `install-from-git` | Install from git instead of crates.io | No | `false` |
 
 ## Examples
