@@ -116,7 +116,22 @@ workspace-cache dockerfile --bin user --fast -o Dockerfile
 
 ## CI Usage (without Docker)
 
-You can also use workspace-cache in CI without Docker for faster builds:
+### GitHub Action (Recommended)
+
+The simplest way to use workspace-cache in CI is with the provided composite action:
+
+```yaml
+- name: Build my binary
+  uses: preiter93/workspace-cache/.github/actions/build-workspace@main
+  with:
+    binary: user
+```
+
+This handles all the caching and build steps automatically. See the [action README](.github/actions/build-workspace/README.md) for more options and examples.
+
+### Manual Setup
+
+You can also set up workspace-cache manually for more control:
 
 ```yaml
 - name: Install workspace-cache
@@ -159,19 +174,6 @@ You can also use workspace-cache in CI without Docker for faster builds:
 ```
 
 The cache key is based on the generated `.workspace-cache/Cargo.lock`, so dependencies are only rebuilt when they change. On cache hits, the dependency build step completes in seconds.
-
-### Using the GitHub Action
-
-For even simpler integration, you can use the provided composite action:
-
-```yaml
-- name: Build my binary
-  uses: preiter93/workspace-cache/.github/actions/build-workspace@main
-  with:
-    binary: user
-```
-
-This handles all the caching and build steps automatically. See the [action README](.github/actions/build-workspace/README.md) for more options and examples.
 
 ## Other Commands
 
