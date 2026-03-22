@@ -1,0 +1,92 @@
+name: Cache Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  example:
+    name: Build example workspace
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/workspace
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache workspace-cache build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+          key: workspace-cache-tool
+
+      - name: Build workspace-cache tool
+        run: cargo build --release --manifest-path ../../Cargo.toml
+
+      - name: Generate minimal workspace for user binary
+        run: ../../target/release/workspace-cache deps --bin user
+
+      - name: Debug - Show generated files
+        run: |
+          ls -la .workspace-cache/
+          cat .workspace-cache/Cargo.toml
+          ls -la .workspace-cache/Cargo.lock || echo "No Cargo.lock yet"
+
+      - name: Get cache key for dependencies
+        id: cache-key
+        run: |
+          HASH="${{ hashFiles('examples/workspace/.workspace-cache/Cargo.lock') }}"
+          echo "key=${{ runner.os }}-workspace-cache-deps-${HASH:0:12}" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: examples/workspace/.workspace-cache/target
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            ${{ runner.os }}-workspace-cache-deps-
+
+      - name: Debug - Check cache status
+        run: |
+          if [ -d ".workspace-cache/target" ]; then
+            echo "✅ Cache restored - target directory exists"
+            ls -la .workspace-cache/target/release/.fingerprint/ | head -20 || true
+          else
+            echo "🔨 No cache - building from scratch"
+          fi
+
+      - name: Build dependencies
+        run: |
+          time cargo build --release
+        working-directory: examples/workspace/.workspace-cache
+
+      - name: Debug - Show build artifacts
+        run: |
+          du -sh .workspace-cache/target
+          ls -la .workspace-cache/target/release/deps/ | head -20
+
+      - name: Copy real sources
+        run: |
+          rm -rf .workspace-cache/crates/user/src .workspace-cache/crates/pkg-a/src .workspace-cache/crates/pkg-b/src
+          cp -r crates/user/src .workspace-cache/crates/user/src
+          cp -r crates/pkg-a/src .workspace-cache/crates/pkg-a/src
+          cp -r crates/pkg-b/src .workspace-cache/crates/pkg-b/src
+
+      - name: Build user binary
+        run: |
+          cargo clean --release -p user -p pkg_a -p pkg_b
+          time cargo build --release --bin user
+        working-directory: examples/workspace/.workspace-cache
+
+      - name: Verify binary
+        run: |
+          .workspace-cache/target/release/user
