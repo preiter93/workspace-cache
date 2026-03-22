@@ -75,7 +75,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        workspace-cache resolve --bin ${{ inputs.binary }} | while read -r path name; do
+        workspace-cache members --bin ${{ inputs.binary }} | while read -r path name; do
           if [ ! -d "$path/src" ]; then
             echo "❌ Error: Source directory $path/src does not exist"
             exit 1
@@ -88,7 +88,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}/.workspace-cache
       run: |
-        PACKAGES=$(workspace-cache resolve --bin ${{ inputs.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
+        PACKAGES=$(workspace-cache members --bin ${{ inputs.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
         if [ "${{ inputs.profile }}" = "release" ]; then
           cargo clean --release $PACKAGES
           cargo build --release --bin ${{ inputs.binary }}

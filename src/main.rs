@@ -51,7 +51,7 @@ fn main() -> Result<()> {
         Command::Build { release, bin } => {
             builder::run_build(release, &bin)?;
         }
-        Command::Resolve { bin } => {
+        Command::Members { bin } => {
             let meta = metadata::get_metadata(false)?;
             let bin_to_pkg = metadata::resolve_bins_to_packages(&meta, &bin);
 

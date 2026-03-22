@@ -31,8 +31,8 @@ pub enum Command {
         #[arg(long)]
         bin: Vec<String>,
     },
-    /// Resolve which workspace members a binary depends on
-    Resolve {
+    /// Show workspace members a binary depends on
+    Members {
         /// Binary/binaries to analyze
         #[arg(long, required = true)]
         bin: Vec<String>,

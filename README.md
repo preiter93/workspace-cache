@@ -160,14 +160,14 @@ You can also set up workspace-cache manually for more control:
 
 - name: Copy real sources
   run: |
-    workspace-cache resolve --bin user | while read path name; do
+    workspace-cache members --bin user | while read path name; do
       rm -rf .workspace-cache/$path/src
       cp -r $path/src .workspace-cache/$path/src
     done
 
 - name: Build binary
   run: |
-    PACKAGES=$(workspace-cache resolve --bin user | awk '{print "-p " $2}' | tr '\n' ' ')
+    PACKAGES=$(workspace-cache members --bin user | awk '{print "-p " $2}' | tr '\n' ' ')
     cargo clean --release $PACKAGES
     cargo build --release --bin user
   working-directory: .workspace-cache
@@ -205,16 +205,16 @@ workspace-cache deps --bin user --bin order
 workspace-cache deps --bin user -o my-cache
 ```
 
-### Show Resolved Dependencies
+### Show Workspace Members
 
 ```sh
-workspace-cache resolve --bin <binary>
+workspace-cache members --bin <binary>
 ```
 
 Shows which workspace members a binary depends on, with their paths and names:
 
 ```
-$ workspace-cache resolve --bin user
+$ workspace-cache members --bin user
 crates/pkg-a pkg_a
 crates/pkg-b pkg_b
 crates/user user

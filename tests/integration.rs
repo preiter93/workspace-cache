@@ -452,7 +452,7 @@ fn test_shared_target_dir_caches_deps() {
 }
 
 #[test]
-fn test_resolve_command() {
+fn test_members_command() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-resolve");
     fs::create_dir_all(&workspace_dir).unwrap();
@@ -537,14 +537,14 @@ pkg-a = { path = "../pkg-a" }
 
     // Test resolve user: should return user, pkg-a, pkg-b
     let output = Command::new(workspace_cache_binary())
-        .args(["resolve", "--bin", "user"])
+        .args(["members", "--bin", "user"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "resolve --bin user failed: {}",
+        "members --bin user failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -563,7 +563,7 @@ pkg-a = { path = "../pkg-a" }
 
     // Test resolve order: should return order, pkg-a, pkg-b
     let output = Command::new(workspace_cache_binary())
-        .args(["resolve", "--bin", "order"])
+        .args(["members", "--bin", "order"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
