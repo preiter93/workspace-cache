@@ -30,6 +30,7 @@ jobs:
         with:
           binary: ${{ matrix.binary }}
           working-directory: examples/workspace
+          install-from-git: true
 
       - name: Verify binary
         working-directory: examples/workspace
