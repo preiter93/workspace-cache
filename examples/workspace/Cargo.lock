@@ -3,17 +3,6 @@
 version = 4
 
 [[package]]
-name = "api"
-version = "0.1.0"
-dependencies = [
- "axum",
- "common",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -102,14 +91,6 @@ name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
-
-[[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "serde",
- "utils",
-]
 
 [[package]]
 name = "errno"
@@ -307,6 +288,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
+name = "order"
+version = "0.1.0"
+dependencies = [
+ "pkg_a",
+ "serde",
+ "serde_json",
+ "tokio",
+ "user",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -346,6 +338,21 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "pkg_a"
+version = "0.1.0"
+dependencies = [
+ "pkg_b",
+ "serde",
+]
+
+[[package]]
+name = "pkg_b"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -590,8 +597,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 
 [[package]]
-name = "utils"
+name = "user"
 version = "0.1.0"
+dependencies = [
+ "axum",
+ "pkg_a",
+ "serde",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "wasi"
@@ -612,16 +626,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
-]
-
-[[package]]
-name = "worker"
-version = "0.1.0"
-dependencies = [
- "common",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]

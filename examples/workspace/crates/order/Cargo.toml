@@ -1,10 +1,11 @@
 [package]
-name = "worker"
+name = "order"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-common = { path = "../common" }
+pkg_a = { path = "../pkg-a" }
+user = { path = "../user" }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 serde.workspace = true
 serde_json.workspace = true

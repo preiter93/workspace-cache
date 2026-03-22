@@ -19,7 +19,7 @@ cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
 Generate a Dockerfile for your service:
 
 ```sh
-workspace-cache dockerfile --bin api -o Dockerfile
+workspace-cache dockerfile --bin user -o Dockerfile
 ```
 
 This produces an optimized multi-stage Dockerfile:
@@ -33,7 +33,7 @@ RUN cargo install workspace-cache@0.1.0
 # Stage 2: Generate minimal workspace with stub sources
 FROM base AS planner
 COPY . .
-RUN workspace-cache deps --bin api
+RUN workspace-cache deps --bin user
 
 # Stage 3: Build dependencies only (cached until Cargo.toml/Cargo.lock change)
 FROM base AS deps
@@ -42,23 +42,23 @@ RUN cargo build --release
 
 # Stage 4: Build the actual binary with real source code
 FROM deps AS builder
-RUN rm -rf crates/api/src crates/common/src
-COPY crates/api crates/api
+RUN rm -rf crates/user/src crates/common/src
+COPY crates/user crates/user
 COPY crates/common crates/common
-RUN cargo clean --release -p api -p common
-RUN cargo build --release --bin api
+RUN cargo clean --release -p user -p common
+RUN cargo build --release --bin user
 
 # Stage 5: Minimal runtime image
 FROM debian:bookworm-slim AS runtime
-COPY --from=builder /app/target/release/api /usr/local/bin/api
-ENTRYPOINT ["/usr/local/bin/api"]
+COPY --from=builder /app/target/release/user /usr/local/bin/user
+ENTRYPOINT ["/usr/local/bin/user"]
 ```
 
 ## Build & Run
 
 ```sh
-docker build -f Dockerfile -t api .
-docker run --rm api
+docker build -f Dockerfile -t user .
+docker run --rm user
 ```
 
 ## How It Works
@@ -91,19 +91,19 @@ Options:
 Examples:
 ```sh
 # Generate release Dockerfile (default)
-workspace-cache dockerfile --bin api -o Dockerfile
+workspace-cache dockerfile --bin user -o Dockerfile
 
 # Generate debug Dockerfile
-workspace-cache dockerfile --bin api --profile debug -o Dockerfile.debug
+workspace-cache dockerfile --bin user --profile debug -o Dockerfile.debug
 
 # Use a specific version
-workspace-cache dockerfile --bin api --tool-version 0.1.0 -o Dockerfile
+workspace-cache dockerfile --bin user --tool-version 0.1.0 -o Dockerfile
 
 # Install from git (latest dev version)
-workspace-cache dockerfile --bin api --from-git -o Dockerfile
+workspace-cache dockerfile --bin user --from-git -o Dockerfile
 
 # Custom base image
-workspace-cache dockerfile --bin api --base-image rust:1.80-alpine -o Dockerfile
+workspace-cache dockerfile --bin user --base-image rust:1.80-alpine -o Dockerfile
 ```
 
 ### Fast Mode
@@ -111,7 +111,7 @@ workspace-cache dockerfile --bin api --base-image rust:1.80-alpine -o Dockerfile
 Use `--fast` to skip dependency resolution. This results in a less optimized cache, but speeds up Docker builds as long as no dependencies have changed.
 
 ```sh
-workspace-cache dockerfile --bin api --fast -o Dockerfile
+workspace-cache dockerfile --bin user --fast -o Dockerfile
 ```
 
 ## CI Usage (without Docker)
@@ -123,7 +123,7 @@ You can also use workspace-cache in CI without Docker for faster builds:
   run: cargo install workspace-cache
 
 - name: Generate minimal workspace
-  run: workspace-cache deps --bin api
+  run: workspace-cache deps --bin user
 
 - name: Build dependencies (cached)
   run: cargo build --release
@@ -131,14 +131,14 @@ You can also use workspace-cache in CI without Docker for faster builds:
 
 - name: Copy real sources
   run: |
-    rm -rf .workspace-cache/crates/api/src .workspace-cache/crates/common/src
-    cp -r crates/api/src .workspace-cache/crates/api/src
+    rm -rf .workspace-cache/crates/user/src .workspace-cache/crates/common/src
+    cp -r crates/user/src .workspace-cache/crates/user/src
     cp -r crates/common/src .workspace-cache/crates/common/src
 
 - name: Build binary
   run: |
-    cargo clean --release -p api -p common
-    cargo build --release --bin api
+    cargo clean --release -p user -p common
+    cargo build --release --bin user
   working-directory: .workspace-cache
 ```
 
@@ -165,13 +165,13 @@ Examples:
 workspace-cache deps
 
 # Generate for a specific binary
-workspace-cache deps --bin api
+workspace-cache deps --bin user
 
 # Generate for multiple binaries
-workspace-cache deps --bin api --bin worker
+workspace-cache deps --bin user --bin order
 
 # Custom output directory
-workspace-cache deps --bin api -o my-cache
+workspace-cache deps --bin user -o my-cache
 ```
 
 ### Show Resolved Dependencies
@@ -198,7 +198,7 @@ Examples:
 workspace-cache build
 
 # Build specific binary in release mode
-workspace-cache build --bin api --release
+workspace-cache build --bin user --release
 ```
 
 ## Testing
@@ -213,17 +213,17 @@ Test locally in your workspace:
 
 ```sh
 # Generate minimal workspace for a binary
-workspace-cache deps --bin api
+workspace-cache deps --bin user
 
 # Build dependencies
 cd .workspace-cache
 cargo build --release
 
 # Copy real sources and build (deps are cached)
-rm -rf crates/api/src crates/common/src
-cp -r ../crates/api/src crates/api/src
+rm -rf crates/user/src crates/common/src
+cp -r ../crates/user/src crates/user/src
 cp -r ../crates/common/src crates/common/src
-cargo build --release --bin api
+cargo build --release --bin user
 ```
 
 Note: This mirrors how the generated Dockerfile works. The key is building
