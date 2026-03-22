@@ -1,7 +1,7 @@
 # Stage 1: Install workspace-cache tool
 FROM rust:1.94-bookworm AS base
 WORKDIR /app
-RUN cargo install workspace-cache@0.1.0-alpha.1
+RUN cargo install workspace-cache@0.1.0-alpha.2
 
 
 # Stage 2: Generate minimal workspace with stub sources

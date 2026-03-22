@@ -6,7 +6,7 @@ inputs:
   version:
     description: 'Version of workspace-cache to install'
     required: false
-    default: '0.1.0-alpha.1'
+    default: '0.1.0-alpha.2'
   install-from-git:
     description: 'Install workspace-cache from git instead of crates.io'
     required: false
