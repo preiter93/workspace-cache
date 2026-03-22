@@ -2,12 +2,15 @@ on: [push, pull_request]
 
 name: Continuous Integration
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -20,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -33,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo dependencies
@@ -44,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo dependencies
