@@ -9,7 +9,7 @@ inputs:
   profile:
     description: 'Build profile (release or debug)'
     required: false
-    default: 'release'
+    default: 'debug'
   working-directory:
     description: 'Working directory containing the workspace'
     required: false

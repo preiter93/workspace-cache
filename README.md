@@ -144,15 +144,68 @@ The simplest way to use workspace-cache in CI is with the provided composite act
 - name: Install workspace-cache
   uses: preiter93/workspace-cache/.github/actions/install-workspace-cache@main
 
-- name: Build my binary
+- name: Build
   uses: preiter93/workspace-cache/.github/actions/build-workspace@main
   with:
     binary: user
+    working-directory: services
+
+- name: Run tests
+  working-directory: services
+  env:
+    CARGO_TARGET_DIR: .workspace-cache/target
+  run: cargo test -p user --verbose
+
+- name: Clippy
+  working-directory: services
+  env:
+    CARGO_TARGET_DIR: .workspace-cache/target
+  run: cargo clippy -p user -- -D warnings
 ```
 
-This handles all the caching and build steps automatically. The `install-workspace-cache` action caches the tool binary for faster subsequent runs. See the action READMEs for more options:
+**Important:** Set `CARGO_TARGET_DIR: .workspace-cache/target` when running cargo commands after build to reuse artifacts.
+
+See the action READMEs for more options:
 - [install-workspace-cache](.github/actions/install-workspace-cache/README.md)
 - [build-workspace](.github/actions/build-workspace/README.md)
+
+### Complete Example with Matrix Strategy
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [user, order, payment]
+    steps:
+      - uses: actions/checkout@v6
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      
+      - name: Install workspace-cache
+        uses: preiter93/workspace-cache/.github/actions/install-workspace-cache@main
+      
+      - name: Build
+        uses: preiter93/workspace-cache/.github/actions/build-workspace@main
+        with:
+          binary: ${{ matrix.service }}
+          working-directory: services
+      
+      - name: Run tests
+        working-directory: services
+        env:
+          CARGO_TARGET_DIR: .workspace-cache/target
+        run: cargo test -p ${{ matrix.service }} --verbose
+      
+      - name: Clippy
+        working-directory: services
+        env:
+          CARGO_TARGET_DIR: .workspace-cache/target
+        run: cargo clippy -p ${{ matrix.service }} -- -D warnings
+```
 
 ### Manual Setup
 

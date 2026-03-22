@@ -10,53 +10,44 @@ A GitHub Actions composite action that builds Rust workspace binaries with optim
 - name: Install workspace-cache
   uses: ./.github/actions/install-workspace-cache
 
-- name: Build my binary
+- name: Build
   uses: ./.github/actions/build-workspace
   with:
     binary: user
+    working-directory: services
+
+- name: Run tests
+  working-directory: services
+  env:
+    CARGO_TARGET_DIR: .workspace-cache/target
+  run: cargo test -p user --verbose
+
+- name: Clippy
+  working-directory: services
+  env:
+    CARGO_TARGET_DIR: .workspace-cache/target
+  run: cargo clippy -p user -- -D warnings
 ```
+
+**Important:** Always set `CARGO_TARGET_DIR: .workspace-cache/target` when running cargo commands after the build to reuse artifacts.
 
 ## Inputs
 
 | Input | Description | Required | Default |
 |-------|-------------|----------|---------|
 | `binary` | Name of the binary to build | Yes | - |
-| `profile` | Build profile (`release` or `debug`) | No | `release` |
+| `profile` | Build profile (`release` or `debug`) | No | `debug` |
 | `working-directory` | Directory containing the workspace | No | `.` |
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `binary-path` | Path to the built binary (e.g., `.workspace-cache/target/release/user`) |
+| `binary-path` | Path to the built binary (e.g., `.workspace-cache/target/debug/user`) |
 
 ## Examples
 
-### Basic Usage
-
-```yaml
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      
-      - uses: dtolnay/rust-toolchain@stable
-      
-      - name: Install workspace-cache
-        uses: ./.github/actions/install-workspace-cache
-      
-      - name: Build binary
-        id: build
-        uses: ./.github/actions/build-workspace
-        with:
-          binary: user
-      
-      - name: Run binary
-        run: ${{ steps.build.outputs.binary-path }}
-```
-
-### Multiple Binaries with Matrix
+### Matrix Build with Tests
 
 ```yaml
 jobs:
@@ -64,69 +55,57 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        binary: [user, order]
+        service: [user, order, payment]
     steps:
       - uses: actions/checkout@v6
       
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       
       - name: Install workspace-cache
         uses: ./.github/actions/install-workspace-cache
       
-      - name: Build ${{ matrix.binary }}
+      - name: Build
         uses: ./.github/actions/build-workspace
         with:
-          binary: ${{ matrix.binary }}
+          binary: ${{ matrix.service }}
+          working-directory: services
+      
+      - name: Run tests
+        working-directory: services
+        env:
+          CARGO_TARGET_DIR: .workspace-cache/target
+        run: cargo test -p ${{ matrix.service }} --verbose
+      
+      - name: Clippy
+        working-directory: services
+        env:
+          CARGO_TARGET_DIR: .workspace-cache/target
+        run: cargo clippy -p ${{ matrix.service }} -- -D warnings
 ```
 
-### Debug Build in Subdirectory
+### Release Build
 
 ```yaml
-- name: Install workspace-cache
-  uses: ./.github/actions/install-workspace-cache
-
-- name: Build debug binary
+- name: Build release binary
   uses: ./.github/actions/build-workspace
   with:
     binary: user
-    profile: debug
-    working-directory: ./services/user
-```
+    profile: release
 
-### Using Latest Development Version
-
-```yaml
-- name: Install workspace-cache from git
-  uses: ./.github/actions/install-workspace-cache
-  with:
-    install-from-git: true
-
-- name: Build binary
-  uses: ./.github/actions/build-workspace
-  with:
-    binary: user
+- name: Run binary
+  run: .workspace-cache/target/release/user
 ```
 
 ## How It Works
 
-1. **Generate minimal workspace** - Creates `.workspace-cache/` with dependency stubs
-2. **Cache dependencies** - Uses GitHub Actions cache with Cargo.lock hash as key
-3. **Build dependencies** - Compiles external dependencies (cached step)
-4. **Copy real sources** - Replaces stubs with actual workspace code
-5. **Build binary** - Compiles workspace crates with real sources
+1. Generates minimal workspace with dependency stubs in `.workspace-cache/`
+2. Caches and builds dependencies (fast when dependencies unchanged)
+3. Copies real source code
+4. Builds the binary
 
-On subsequent runs, if dependencies haven't changed, step 3 completes in seconds instead of minutes.
-
-## Caching
-
-The action automatically caches:
-- Compiled dependencies in `.workspace-cache/target`
-- Cache key: `{OS}-workspace-cache-deps-{Cargo.lock hash}`
-
-This means:
-- Different binaries with same dependencies share cache
-- Source code changes don't invalidate dependency cache
-- Only dependency changes trigger full rebuild
+Dependencies are cached using `{OS}-workspace-cache-deps-{Cargo.lock hash}`, so they only rebuild when Cargo.lock changes.
 
 ## License
 

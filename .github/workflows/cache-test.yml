@@ -23,6 +23,8 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
       - name: Install workspace-cache
         uses: ./.github/actions/install-workspace-cache
@@ -35,6 +37,18 @@ jobs:
         with:
           binary: ${{ matrix.binary }}
           working-directory: examples/workspace
+
+      - name: Run tests
+        working-directory: examples/workspace
+        env:
+          CARGO_TARGET_DIR: .workspace-cache/target
+        run: cargo test -p ${{ matrix.binary }} --verbose
+
+      - name: Clippy
+        working-directory: examples/workspace
+        env:
+          CARGO_TARGET_DIR: .workspace-cache/target
+        run: cargo clippy -p ${{ matrix.binary }} -- -D warnings
 
       - name: Verify binary
         working-directory: examples/workspace
