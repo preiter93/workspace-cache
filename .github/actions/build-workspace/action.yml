@@ -74,7 +74,7 @@ runs:
         fi
         echo "::endgroup::"
 
-    - name: Copy real sources
+    - name: Restore application source code
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
@@ -86,7 +86,7 @@ runs:
           fi
           rm -rf .workspace-cache/$path
           cp -r $path .workspace-cache/$path
-          echo "  ✓ Copied $path (src, migrations, assets, etc.)"
+          echo "  ✓ Copied $path"
         done
         echo "::endgroup::"
 
