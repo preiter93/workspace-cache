@@ -349,6 +349,10 @@ cargo build --release --bin user
 Note: This mirrors how the generated Dockerfile works. The key is building
 the final binary from within `.workspace-cache/` after copying real sources.
 
+## Example
+
+See [rust-microservices](https://github.com/preiter93/rust-microservices) for a complete example using workspace-cache in a real microservices project with CI/CD.
+
 ## License
 
 MIT
