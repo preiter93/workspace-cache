@@ -301,6 +301,10 @@ cargo build --release --bin user
 Note: This mirrors how the generated Dockerfile works. The key is building
 the final binary from within `.workspace-cache/` after copying real sources.
 
+## Known Limitations
+
+- **Embedding external files**: `include_bytes!()` and similar macros referencing files outside workspace members will fail. Put the file in a workspace member or use absolute paths resolved from the project root.
+
 ## Example
 
 See [rust-microservices](https://github.com/preiter93/rust-microservices) for a complete example using workspace-cache in a real microservices project with Docker and CI/CD.
