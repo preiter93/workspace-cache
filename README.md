@@ -165,6 +165,8 @@ The simplest way to use workspace-cache in CI is with the provided composite act
 
 **Important:** Set `CARGO_TARGET_DIR: .workspace-cache/target` when running cargo commands after build to reuse artifacts.
 
+**Note:** The build action compiles tests by default (`build-tests: true`), so dev-dependencies are cached and test compilation is fast.
+
 See the action READMEs for more options:
 - [install-workspace-cache](.github/actions/install-workspace-cache/README.md)
 - [build-workspace](.github/actions/build-workspace/README.md)

@@ -38,6 +38,7 @@ A GitHub Actions composite action that builds Rust workspace binaries with optim
 | `binary` | Name of the binary to build | Yes | - |
 | `profile` | Build profile (`release` or `debug`) | No | `debug` |
 | `working-directory` | Directory containing the workspace | No | `.` |
+| `build-tests` | Build test targets to cache dev-dependencies | No | `true` |
 
 ## Outputs
 
@@ -55,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [user, order, payment]
+        service: [user, order]
     steps:
       - uses: actions/checkout@v6
       
@@ -66,11 +67,12 @@ jobs:
       - name: Install workspace-cache
         uses: ./.github/actions/install-workspace-cache
       
-      - name: Build
+      - name: Build ${{ matrix.service }}
         uses: ./.github/actions/build-workspace
         with:
           binary: ${{ matrix.service }}
           working-directory: services
+          # build-tests: true (default - includes dev-dependencies)
       
       - name: Run tests
         working-directory: services
@@ -83,6 +85,16 @@ jobs:
         env:
           CARGO_TARGET_DIR: .workspace-cache/target
         run: cargo clippy -p ${{ matrix.service }} -- -D warnings
+```
+
+### Binary-Only Build (Skip Tests)
+
+```yaml
+- name: Build binary only
+  uses: ./.github/actions/build-workspace
+  with:
+    binary: user
+    build-tests: false  # Skip test dependencies for faster builds
 ```
 
 ### Release Build

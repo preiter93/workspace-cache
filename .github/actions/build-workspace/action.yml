@@ -14,6 +14,10 @@ inputs:
     description: 'Working directory containing the workspace'
     required: false
     default: '.'
+  build-tests:
+    description: 'Build test targets to cache dev-dependencies'
+    required: false
+    default: 'true'
 
 
 outputs:
@@ -88,15 +92,21 @@ runs:
         PACKAGES=$(workspace-cache members --bin ${{ inputs.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
         PROFILE="${{ inputs.profile }}"
 
+        BUILD_TESTS="${{ inputs.build-tests }}"
+        TESTS_FLAG=""
+        if [ "$BUILD_TESTS" = "true" ]; then
+          TESTS_FLAG="--tests"
+        fi
+
         if [ "$PROFILE" = "debug" ]; then
           cargo clean $PACKAGES
-          cargo build --bin ${{ inputs.binary }}
+          cargo build --bin ${{ inputs.binary }} $TESTS_FLAG
         elif [ "$PROFILE" = "release" ]; then
           cargo clean --release $PACKAGES
-          cargo build --release --bin ${{ inputs.binary }}
+          cargo build --release --bin ${{ inputs.binary }} $TESTS_FLAG
         else
           cargo clean --profile "$PROFILE" $PACKAGES
-          cargo build --profile "$PROFILE" --bin ${{ inputs.binary }}
+          cargo build --profile "$PROFILE" --bin ${{ inputs.binary }} $TESTS_FLAG
         fi
         echo "::endgroup::"
 
