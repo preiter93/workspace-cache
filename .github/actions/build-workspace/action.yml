@@ -68,15 +68,15 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        echo "::group::📋 Copying real source files"
+        echo "::group::📋 Copying workspace members"
         workspace-cache members --bin ${{ inputs.binary }} | while read -r path name; do
-          if [ ! -d "$path/src" ]; then
-            echo "❌ Error: Source directory $path/src does not exist"
+          if [ ! -d "$path" ]; then
+            echo "❌ Error: Workspace member $path does not exist"
             exit 1
           fi
-          rm -rf .workspace-cache/$path/src
-          cp -r $path/src .workspace-cache/$path/src
-          echo "  ✓ Copied $path"
+          rm -rf .workspace-cache/$path
+          cp -r $path .workspace-cache/$path
+          echo "  ✓ Copied $path (src, migrations, assets, etc.)"
         done
         echo "::endgroup::"
 

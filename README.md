@@ -44,7 +44,7 @@ RUN cargo build --release
 
 # Stage 4: Build the actual binary with real source code
 FROM deps AS builder
-RUN rm -rf crates/user/src crates/common/src
+RUN rm -rf crates/user crates/common
 COPY crates/user crates/user
 COPY crates/common crates/common
 RUN cargo clean --release -p user -p common
@@ -186,8 +186,8 @@ You can also set up workspace-cache manually for more control:
 - name: Copy real sources
   run: |
     workspace-cache members --bin user | while read path name; do
-      rm -rf .workspace-cache/$path/src
-      cp -r $path/src .workspace-cache/$path/src
+      rm -rf .workspace-cache/$path
+      cp -r $path .workspace-cache/$path
     done
 
 - name: Build binary
@@ -285,9 +285,9 @@ cd .workspace-cache
 cargo build --release
 
 # Copy real sources and build (deps are cached)
-rm -rf crates/user/src crates/common/src
-cp -r ../crates/user/src crates/user/src
-cp -r ../crates/common/src crates/common/src
+rm -rf crates/user crates/common
+cp -r ../crates/user crates/user
+cp -r ../crates/common crates/common
 cargo build --release --bin user
 ```
 

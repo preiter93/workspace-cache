@@ -27,7 +27,7 @@ RUN cargo build{% if release %} --release{% endif %}
 
 # Stage 4: Build the actual binary with real source code
 FROM deps AS builder
-RUN rm -rf {% for member in members %}{{ member.path }}/src{% if not loop.last %} {% endif %}{% endfor %}
+RUN rm -rf {% for member in members %}{{ member.path }}{% if not loop.last %} {% endif %}{% endfor %}
 {%- for member in members %}
 COPY {{ member.path }} {{ member.path }}
 {%- endfor %}
