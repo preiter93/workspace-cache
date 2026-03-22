@@ -32,21 +32,30 @@ runs:
         path: ~/.cargo/bin/workspace-cache
         key: ${{ steps.cache-key.outputs.key }}
 
+    - name: Cache hit check
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: echo "✅ workspace-cache restored from cache"
+
     - name: Install workspace-cache
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
+        echo "::group::📥 Installing workspace-cache"
         if [ "${{ inputs.install-from-git }}" = "true" ]; then
-          echo "Installing workspace-cache from git..."
+          echo "📦 Installing from git (latest)..."
           cargo install --git https://github.com/preiter93/workspace-cache workspace-cache
         else
-          echo "Installing workspace-cache@${{ inputs.version }} from crates.io..."
+          echo "📦 Installing version ${{ inputs.version }} from crates.io..."
           cargo install workspace-cache@${{ inputs.version }}
         fi
+        echo "::endgroup::"
 
     - name: Verify installation
       shell: bash
-      run: workspace-cache --version
+      run: |
+        VERSION=$(workspace-cache --version)
+        echo "✓ $VERSION"
 
 branding:
   icon: 'download'

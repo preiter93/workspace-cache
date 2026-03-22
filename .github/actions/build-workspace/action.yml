@@ -27,7 +27,11 @@ runs:
     - name: Generate minimal workspace
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: workspace-cache deps --bin ${{ inputs.binary }}
+      run: |
+        echo "::group::📦 Generating minimal workspace for ${{ inputs.binary }}"
+        workspace-cache deps --bin ${{ inputs.binary }}
+        echo "✓ Generated .workspace-cache/"
+        echo "::endgroup::"
 
     - name: Get cache key for dependencies
       id: cache-key
@@ -49,16 +53,22 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}/.workspace-cache
       run: |
-        if [ "${{ inputs.profile }}" = "release" ]; then
+        echo "::group::🔨 Building dependencies (${{ inputs.profile }} profile)"
+        PROFILE="${{ inputs.profile }}"
+        if [ "$PROFILE" = "debug" ]; then
+          cargo build
+        elif [ "$PROFILE" = "release" ]; then
           cargo build --release
         else
-          cargo build
+          cargo build --profile "$PROFILE"
         fi
+        echo "::endgroup::"
 
     - name: Copy real sources
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
+        echo "::group::📋 Copying real source files"
         workspace-cache members --bin ${{ inputs.binary }} | while read -r path name; do
           if [ ! -d "$path/src" ]; then
             echo "❌ Error: Source directory $path/src does not exist"
@@ -66,30 +76,40 @@ runs:
           fi
           rm -rf .workspace-cache/$path/src
           cp -r $path/src .workspace-cache/$path/src
+          echo "  ✓ Copied $path"
         done
+        echo "::endgroup::"
 
     - name: Build binary
       shell: bash
       working-directory: ${{ inputs.working-directory }}/.workspace-cache
       run: |
+        echo "::group::🚀 Building ${{ inputs.binary }} (${{ inputs.profile }} profile)"
         PACKAGES=$(workspace-cache members --bin ${{ inputs.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
-        if [ "${{ inputs.profile }}" = "release" ]; then
+        PROFILE="${{ inputs.profile }}"
+        
+        if [ "$PROFILE" = "debug" ]; then
+          cargo clean $PACKAGES
+          cargo build --bin ${{ inputs.binary }}
+        elif [ "$PROFILE" = "release" ]; then
           cargo clean --release $PACKAGES
           cargo build --release --bin ${{ inputs.binary }}
         else
-          cargo clean $PACKAGES
-          cargo build --bin ${{ inputs.binary }}
+          cargo clean --profile "$PROFILE" $PACKAGES
+          cargo build --profile "$PROFILE" --bin ${{ inputs.binary }}
         fi
+        echo "::endgroup::"
 
     - name: Set output
       id: build-info
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        if [ "${{ inputs.profile }}" = "release" ]; then
-          echo "binary-path=.workspace-cache/target/release/${{ inputs.binary }}" >> $GITHUB_OUTPUT
-        else
+        PROFILE="${{ inputs.profile }}"
+        if [ "$PROFILE" = "debug" ]; then
           echo "binary-path=.workspace-cache/target/debug/${{ inputs.binary }}" >> $GITHUB_OUTPUT
+        else
+          echo "binary-path=.workspace-cache/target/$PROFILE/${{ inputs.binary }}" >> $GITHUB_OUTPUT
         fi
 
 branding:
