@@ -117,7 +117,7 @@ jobs:
 3. Copies real source code
 4. Builds the binary
 
-Dependencies are cached using `{OS}-workspace-cache-deps-{Cargo.lock hash}`, so they only rebuild when Cargo.lock changes.
+Dependencies are cached using `{OS}-workspace-cache-deps-{profile}-{Cargo.lock hash}`, so they only rebuild when the profile or Cargo.lock changes.
 
 ## License
 
