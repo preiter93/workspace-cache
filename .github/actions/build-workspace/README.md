@@ -17,19 +17,15 @@ A GitHub Actions composite action that builds Rust workspace binaries with optim
     working-directory: services
 
 - name: Run tests
-  working-directory: services
-  env:
-    CARGO_TARGET_DIR: .workspace-cache/target
+  working-directory: services/.workspace-cache
   run: cargo test -p user --verbose
 
 - name: Clippy
-  working-directory: services
-  env:
-    CARGO_TARGET_DIR: .workspace-cache/target
+  working-directory: services/.workspace-cache
   run: cargo clippy -p user -- -D warnings
 ```
 
-**Important:** Always set `CARGO_TARGET_DIR: .workspace-cache/target` when running cargo commands after the build to reuse artifacts.
+**Important:** Run tests and other cargo commands from `services/.workspace-cache` where the complete workspace is built.
 
 ## Inputs
 
@@ -72,18 +68,13 @@ jobs:
         with:
           binary: ${{ matrix.service }}
           working-directory: services
-          # build-tests: true (default - includes dev-dependencies)
       
       - name: Run tests
-        working-directory: services
-        env:
-          CARGO_TARGET_DIR: .workspace-cache/target
+        working-directory: services/.workspace-cache
         run: cargo test -p ${{ matrix.service }} --verbose
       
       - name: Clippy
-        working-directory: services
-        env:
-          CARGO_TARGET_DIR: .workspace-cache/target
+        working-directory: services/.workspace-cache
         run: cargo clippy -p ${{ matrix.service }} -- -D warnings
 ```
 
@@ -114,8 +105,8 @@ jobs:
 
 1. Generates minimal workspace with dependency stubs in `.workspace-cache/`
 2. Caches and builds dependencies (fast when dependencies unchanged)
-3. Copies real source code
-4. Builds the binary
+3. Copies real source code and workspace members
+4. Builds the binary with tests
 
 Dependencies are cached using `{OS}-workspace-cache-deps-{profile}-{Cargo.lock hash}`, so they only rebuild when the profile or Cargo.lock changes.
 

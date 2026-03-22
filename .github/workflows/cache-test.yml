@@ -39,15 +39,11 @@ jobs:
           working-directory: examples/workspace
 
       - name: Run tests
-        working-directory: examples/workspace
-        env:
-          CARGO_TARGET_DIR: .workspace-cache/target
+        working-directory: examples/workspace/.workspace-cache
         run: cargo test -p ${{ matrix.binary }} --verbose
 
       - name: Clippy
-        working-directory: examples/workspace
-        env:
-          CARGO_TARGET_DIR: .workspace-cache/target
+        working-directory: examples/workspace/.workspace-cache
         run: cargo clippy -p ${{ matrix.binary }} -- -D warnings
 
       - name: Verify binary

@@ -151,19 +151,15 @@ The simplest way to use workspace-cache in CI is with the provided composite act
     working-directory: services
 
 - name: Run tests
-  working-directory: services
-  env:
-    CARGO_TARGET_DIR: .workspace-cache/target
+  working-directory: services/.workspace-cache
   run: cargo test -p user --verbose
 
 - name: Clippy
-  working-directory: services
-  env:
-    CARGO_TARGET_DIR: .workspace-cache/target
+  working-directory: services/.workspace-cache
   run: cargo clippy -p user -- -D warnings
 ```
 
-**Important:** Set `CARGO_TARGET_DIR: .workspace-cache/target` when running cargo commands after build to reuse artifacts.
+**Important:** Run tests and other cargo commands from `services/.workspace-cache` where the complete workspace is built.
 
 **Note:** The build action compiles tests by default (`build-tests: true`), so dev-dependencies are cached and test compilation is fast.
 
@@ -197,15 +193,11 @@ jobs:
           working-directory: services
       
       - name: Run tests
-        working-directory: services
-        env:
-          CARGO_TARGET_DIR: .workspace-cache/target
+        working-directory: services/.workspace-cache
         run: cargo test -p ${{ matrix.service }} --verbose
       
       - name: Clippy
-        working-directory: services
-        env:
-          CARGO_TARGET_DIR: .workspace-cache/target
+        working-directory: services/.workspace-cache
         run: cargo clippy -p ${{ matrix.service }} -- -D warnings
 ```
 
