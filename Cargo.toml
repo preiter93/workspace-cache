@@ -1,6 +1,6 @@
 [package]
 name = "workspace-cache"
-description = "A CLI to generate cached Docker builds for Rust workspace"
+description = "A CLI to generate cached Docker builds for Rust workspaces"
 version = "0.1.0-alpha.2"
 repository = "https://github.com/preiter93/workspace-cache"
 authors = ["preiter <phil.reiter93@gmail.com>"]
