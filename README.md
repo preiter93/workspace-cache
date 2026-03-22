@@ -172,7 +172,7 @@ You can also set up workspace-cache manually for more control:
     echo "key=${{ runner.os }}-workspace-cache-deps-${HASH}" >> $GITHUB_OUTPUT
 
 - name: Cache dependencies
-  uses: actions/cache@v4
+  uses: actions/cache@v5
   with:
     path: .workspace-cache/target
     key: ${{ steps.cache-key.outputs.key }}

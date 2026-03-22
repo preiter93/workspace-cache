@@ -42,7 +42,7 @@ runs:
         echo "key=${{ runner.os }}-workspace-cache-deps-${HASH}" >> $GITHUB_OUTPUT
 
     - name: Cache dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ inputs.working-directory }}/.workspace-cache/target
         key: ${{ steps.cache-key.outputs.key }}
@@ -87,7 +87,7 @@ runs:
         echo "::group::🚀 Building ${{ inputs.binary }} (${{ inputs.profile }} profile)"
         PACKAGES=$(workspace-cache members --bin ${{ inputs.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
         PROFILE="${{ inputs.profile }}"
-        
+
         if [ "$PROFILE" = "debug" ]; then
           cargo clean $PACKAGES
           cargo build --bin ${{ inputs.binary }}
