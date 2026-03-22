@@ -343,7 +343,7 @@ the final binary from within `.workspace-cache/` after copying real sources.
 
 ## Example
 
-See [rust-microservices](https://github.com/preiter93/rust-microservices) for a complete example using workspace-cache in a real microservices project with CI/CD.
+See [rust-microservices](https://github.com/preiter93/rust-microservices) for a complete example using workspace-cache in a real microservices project with Docker and CI/CD.
 
 ## License
 

@@ -88,6 +88,8 @@ jobs:
     build-tests: false  # Skip test dependencies for faster builds
 ```
 
+
+
 ### Release Build
 
 ```yaml
@@ -103,10 +105,12 @@ jobs:
 
 ## How It Works
 
-1. Generates minimal workspace with dependency stubs in `.workspace-cache/`
+1. Generates minimal workspace with dependency stubs in `.workspace-cache/` inside the working directory
 2. Caches and builds dependencies (fast when dependencies unchanged)
-3. Copies real source code and workspace members
+3. Copies real source code and workspace members to `.workspace-cache/`
 4. Builds the binary with tests
+
+Run tests and other cargo commands from `.workspace-cache` where all sources and dependencies are built.
 
 Dependencies are cached using `{OS}-workspace-cache-deps-{profile}-{Cargo.lock hash}`, so they only rebuild when the profile or Cargo.lock changes.
 
