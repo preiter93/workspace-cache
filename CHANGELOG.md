@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2026-03-22
+
+### 🚀 Features
+
+- *(action)* Use debug mode by default
+- *(actions)* Cache test dependencies
+
+### 🐛 Bug Fixes
+
+- Copy entire workspace members, not just src directories
+- *(action)* Include profile in cache hash
+- *(action)* Set correct working directory
+- *(action)* Set test flag when building dependencies
+
+### 📚 Documentation
+
+- *(README)* Add badges
+- *(README)* Add comparison with cargo chef
+- *(README)* Link rust-microservices as an example
+- *(README)* Update other comments section
+
+### ⚙️ Miscellaneous Tasks
+
+- Update cache action to v5
+
 ## [0.1.0] - 2026-03-22
 
 ### 🚀 Features
