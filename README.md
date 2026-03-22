@@ -247,71 +247,31 @@ You can also set up workspace-cache manually for more control:
 
 The cache key is based on the generated `.workspace-cache/Cargo.lock`, so dependencies are only rebuilt when they change. On cache hits, the dependency build step completes in seconds.
 
-## Other Commands
+## CLI Reference
 
-The following commands are mainly for debugging or understanding how the tool works internally.
-
-### Generate Minimal Workspace
+### deps - Generate minimal workspace
 
 ```sh
-workspace-cache deps [OPTIONS]
+workspace-cache deps --bin <binary> [--output <dir>] [--fast]
 ```
 
-Options:
-- `--bin <binary>` - Only include dependencies for specific binary/binaries
-- `-o, --output <dir>` - Output directory (default: `.workspace-cache`)
-- `--fast` - Fast mode: skip dependency resolution
+Generates a minimal workspace with stub sources for the specified binary.
 
-Examples:
-```sh
-# Generate for all workspace binaries
-workspace-cache deps
-
-# Generate for a specific binary
-workspace-cache deps --bin user
-
-# Generate for multiple binaries
-workspace-cache deps --bin user --bin order
-
-# Custom output directory
-workspace-cache deps --bin user -o my-cache
-```
-
-### Show Workspace Members
+### members - List workspace members
 
 ```sh
 workspace-cache members --bin <binary>
 ```
 
-Shows which workspace members a binary depends on, with their paths and names:
+Lists workspace members that the binary depends on (used internally by CI actions).
 
-```
-$ workspace-cache members --bin user
-crates/pkg-a pkg_a
-crates/pkg-b pkg_b
-crates/user user
-```
-
-This output can be used in scripts to dynamically copy sources or generate package lists.
-
-### Build Workspace
+### dockerfile - Generate Dockerfile
 
 ```sh
-workspace-cache build [OPTIONS]
+workspace-cache dockerfile --bin <binary> [OPTIONS]
 ```
 
-Options:
-- `--bin <binary>` - Only build specific binary/binaries
-- `--release` - Build in release mode
-
-Examples:
-```sh
-# Build all binaries
-workspace-cache build
-
-# Build specific binary in release mode
-workspace-cache build --bin user --release
-```
+See [Usage](#usage) section above for details.
 
 ## Testing
 
