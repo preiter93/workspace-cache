@@ -69,11 +69,6 @@ jobs:
           time cargo build --release
         working-directory: examples/workspace/.workspace-cache
 
-      - name: Debug - Show build artifacts
-        run: |
-          du -sh .workspace-cache/target
-          ls -la .workspace-cache/target/release/deps/ | head -20
-
       - name: Copy real sources
         run: |
           rm -rf .workspace-cache/crates/user/src .workspace-cache/crates/pkg-a/src .workspace-cache/crates/pkg-b/src
