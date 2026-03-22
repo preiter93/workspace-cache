@@ -156,15 +156,6 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: ls -la artifacts/
-
       - name: Install git-cliff
         uses: taiki-e/install-action@v2
         with:
@@ -191,6 +182,15 @@ jobs:
           git tag -f "$TAG" -m "Release $TAG"
           git push origin "$TAG" --force
 
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -202,6 +202,10 @@ jobs:
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean artifacts before publish
+        if: needs.prepare.outputs.publish_crate == 'true'
+        run: rm -rf artifacts/
 
       - name: Publish to crates.io
         if: needs.prepare.outputs.publish_crate == 'true'
