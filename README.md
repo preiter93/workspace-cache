@@ -125,7 +125,21 @@ You can also use workspace-cache in CI without Docker for faster builds:
 - name: Generate minimal workspace
   run: workspace-cache deps --bin user
 
-- name: Build dependencies (cached)
+- name: Get cache key for dependencies
+  id: cache-key
+  run: |
+    HASH="${{ hashFiles('.workspace-cache/Cargo.lock') }}"
+    echo "key=${{ runner.os }}-workspace-cache-deps-${HASH}" >> $GITHUB_OUTPUT
+
+- name: Cache dependencies
+  uses: actions/cache@v4
+  with:
+    path: .workspace-cache/target
+    key: ${{ steps.cache-key.outputs.key }}
+    restore-keys: |
+      ${{ runner.os }}-workspace-cache-deps-
+
+- name: Build dependencies (cached when Cargo.lock unchanged)
   run: cargo build --release
   working-directory: .workspace-cache
 
@@ -142,7 +156,7 @@ You can also use workspace-cache in CI without Docker for faster builds:
   working-directory: .workspace-cache
 ```
 
-With CI caching (e.g., `Swatinem/rust-cache`), the dependency build step will be cached until `Cargo.toml` or `Cargo.lock` changes.
+The cache key is based on the generated `.workspace-cache/Cargo.lock`, so dependencies are only rebuilt when they change. On cache hits, the dependency build step completes in seconds.
 
 ## Other Commands
 
