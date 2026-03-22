@@ -72,6 +72,24 @@ docker run --rm user
 
 When source files change but dependencies don't, Docker skips the `deps` stage entirely.
 
+### Workspace Optimization
+
+workspace-cache analyzes your workspace dependency graph and includes only the necessary members for your binary. This enables isolated builds where changes to unrelated workspace members don't invalidate your cache. For example, if you have `user`, `order`, and `payment` services, changing the `payment` service won't trigger rebuilds of `user` or `order` containers.
+
+This optimization applies to both the dependency build stage and the binary build stage. The generated Dockerfile only copies workspace members that your binary depends on, ensuring that changes to independent members don't invalidate Docker's layer cache at any stage of the build.
+
+## Comparison with cargo-chef
+
+| Feature | cargo-chef | workspace-cache |
+|---------|------------|-----------------|
+| Cached dependencies | ✅ | ✅ |
+| Workspace optimization (dependencies) | ✅ | ✅ |
+| Fast dependency build | ❌ | ✅ ([`--fast`](#fast-mode)) |
+| Workspace optimization (binary) | ❌ | ✅ ([`Optimization`](#workspace-optimization)) |
+| Dockerfile generation | ❌ | ✅ ([`Dockerfile`](#usage)) |
+| GitHub Actions | ❌ | ✅ ([`CI Usage`](#ci-usage-without-docker)) |
+| Get dependent workspace members | ❌ | ✅ ([`members`](#show-workspace-members)) |
+
 ## Usage
 
 The main command is `dockerfile`. It generates an optimized Dockerfile for your binary:
