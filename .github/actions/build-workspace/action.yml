@@ -1,0 +1,105 @@
+name: Build Workspace with workspace-cache
+description: Build a Rust workspace binary with optimized dependency caching
+author: workspace-cache
+
+inputs:
+  binary:
+    description: 'Name of the binary to build'
+    required: true
+  profile:
+    description: 'Build profile (release or debug)'
+    required: false
+    default: 'release'
+  working-directory:
+    description: 'Working directory containing the workspace'
+    required: false
+    default: '.'
+  workspace-cache-version:
+    description: 'Version of workspace-cache to install (default: latest)'
+    required: false
+    default: 'latest'
+
+outputs:
+  binary-path:
+    description: 'Path to the built binary'
+    value: ${{ steps.build-info.outputs.binary-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install workspace-cache
+      shell: bash
+      run: |
+        if [ "${{ inputs.workspace-cache-version }}" = "latest" ]; then
+          cargo install workspace-cache
+        else
+          cargo install workspace-cache@${{ inputs.workspace-cache-version }}
+        fi
+
+    - name: Generate minimal workspace
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: workspace-cache deps --bin ${{ inputs.binary }}
+
+    - name: Get cache key for dependencies
+      id: cache-key
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        HASH="${{ hashFiles(format('{0}/.workspace-cache/Cargo.lock', inputs.working-directory)) }}"
+        echo "key=${{ runner.os }}-workspace-cache-deps-${HASH}" >> $GITHUB_OUTPUT
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.working-directory }}/.workspace-cache/target
+        key: ${{ steps.cache-key.outputs.key }}
+        restore-keys: |
+          ${{ runner.os }}-workspace-cache-deps-
+
+    - name: Build dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}/.workspace-cache
+      run: |
+        if [ "${{ inputs.profile }}" = "release" ]; then
+          cargo build --release
+        else
+          cargo build
+        fi
+
+    - name: Copy real sources
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        workspace-cache resolve --bin ${{ inputs.binary }} | while read path name; do
+          rm -rf .workspace-cache/$path/src
+          cp -r $path/src .workspace-cache/$path/src
+        done
+
+    - name: Build binary
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}/.workspace-cache
+      run: |
+        PACKAGES=$(workspace-cache resolve --bin ${{ inputs.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
+        if [ "${{ inputs.profile }}" = "release" ]; then
+          cargo clean --release $PACKAGES
+          cargo build --release --bin ${{ inputs.binary }}
+        else
+          cargo clean $PACKAGES
+          cargo build --bin ${{ inputs.binary }}
+        fi
+
+    - name: Set output
+      id: build-info
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ "${{ inputs.profile }}" = "release" ]; then
+          echo "binary-path=.workspace-cache/target/release/${{ inputs.binary }}" >> $GITHUB_OUTPUT
+        else
+          echo "binary-path=.workspace-cache/target/debug/${{ inputs.binary }}" >> $GITHUB_OUTPUT
+        fi
+
+branding:
+  icon: 'package'
+  color: 'orange'

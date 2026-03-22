@@ -8,84 +8,29 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  example:
+  build-binaries:
     name: Build ${{ matrix.binary }} binary
     runs-on: ubuntu-latest
     strategy:
       matrix:
         binary: [user, order]
-    defaults:
-      run:
-        working-directory: examples/workspace
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache workspace-cache build
-        uses: Swatinem/rust-cache@v2
+      - name: Build ${{ matrix.binary }}
+        id: build
+        uses: ./.github/actions/build-workspace
         with:
-          workspaces: . -> target
-          key: workspace-cache-tool
-
-      - name: Build workspace-cache tool
-        run: cargo build --release --manifest-path ../../Cargo.toml
-
-      - name: Generate minimal workspace for ${{ matrix.binary }} binary
-        run: ../../target/release/workspace-cache deps --bin ${{ matrix.binary }}
-
-      - name: Debug - Show generated files
-        run: |
-          ls -la .workspace-cache/
-          cat .workspace-cache/Cargo.toml
-          ls -la .workspace-cache/Cargo.lock || echo "No Cargo.lock yet"
-
-      - name: Get cache key for dependencies
-        id: cache-key
-        run: |
-          HASH="${{ hashFiles('examples/workspace/.workspace-cache/Cargo.lock') }}"
-          echo "key=${{ runner.os }}-workspace-cache-deps-${HASH}" >> $GITHUB_OUTPUT
-
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: examples/workspace/.workspace-cache/target
-          key: ${{ steps.cache-key.outputs.key }}
-          restore-keys: |
-            ${{ runner.os }}-workspace-cache-deps-
-
-      - name: Debug - Check cache status
-        run: |
-          if [ -d ".workspace-cache/target" ]; then
-            echo "✅ Cache restored - target directory exists"
-            ls -la .workspace-cache/target/release/.fingerprint/ | head -20 || true
-          else
-            echo "🔨 No cache - building from scratch"
-          fi
-
-      - name: Build dependencies
-        run: |
-          time cargo build --release
-        working-directory: examples/workspace/.workspace-cache
-
-      - name: Copy real sources
-        run: |
-          ../../target/release/workspace-cache resolve --bin ${{ matrix.binary }} | while read path name; do
-            rm -rf .workspace-cache/$path/src
-            cp -r $path/src .workspace-cache/$path/src
-          done
-
-      - name: Build ${{ matrix.binary }} binary
-        run: |
-          PACKAGES=$(../../target/release/workspace-cache resolve --bin ${{ matrix.binary }} | awk '{print "-p " $2}' | tr '\n' ' ')
-          cargo clean --release $PACKAGES
-          time cargo build --release --bin ${{ matrix.binary }}
-        working-directory: examples/workspace/.workspace-cache
+          binary: ${{ matrix.binary }}
+          working-directory: examples/workspace
 
       - name: Verify binary
-        run: |
-          .workspace-cache/target/release/${{ matrix.binary }}
+        working-directory: examples/workspace
+        run: ${{ steps.build.outputs.binary-path }}
