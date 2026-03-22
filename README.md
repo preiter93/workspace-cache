@@ -145,13 +145,15 @@ You can also use workspace-cache in CI without Docker for faster builds:
 
 - name: Copy real sources
   run: |
-    rm -rf .workspace-cache/crates/user/src .workspace-cache/crates/common/src
-    cp -r crates/user/src .workspace-cache/crates/user/src
-    cp -r crates/common/src .workspace-cache/crates/common/src
+    workspace-cache resolve --bin user | while read path name; do
+      rm -rf .workspace-cache/$path/src
+      cp -r $path/src .workspace-cache/$path/src
+    done
 
 - name: Build binary
   run: |
-    cargo clean --release -p user -p common
+    PACKAGES=$(workspace-cache resolve --bin user | awk '{print "-p " $2}' | tr '\n' ' ')
+    cargo clean --release $PACKAGES
     cargo build --release --bin user
   working-directory: .workspace-cache
 ```
@@ -194,7 +196,16 @@ workspace-cache deps --bin user -o my-cache
 workspace-cache resolve --bin <binary>
 ```
 
-Shows which workspace members a binary depends on.
+Shows which workspace members a binary depends on, with their paths and names:
+
+```
+$ workspace-cache resolve --bin user
+crates/pkg-a pkg_a
+crates/pkg-b pkg_b
+crates/user user
+```
+
+This output can be used in scripts to dynamically copy sources or generate package lists.
 
 ### Build Workspace
 
