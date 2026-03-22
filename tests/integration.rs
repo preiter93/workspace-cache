@@ -11,13 +11,13 @@ fn workspace_cache_binary() -> std::path::PathBuf {
 }
 
 fn create_test_workspace(dir: &Path) {
-    fs::create_dir_all(dir.join("crates/bin-a/src")).unwrap();
-    fs::create_dir_all(dir.join("crates/lib-b/src")).unwrap();
+    fs::create_dir_all(dir.join("crates/user/src")).unwrap();
+    fs::create_dir_all(dir.join("crates/pkg-a/src")).unwrap();
 
     fs::write(
         dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/bin-a", "crates/lib-b"]
+members = ["crates/user", "crates/pkg-a"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -28,29 +28,29 @@ log = "0.4"
     .unwrap();
 
     fs::write(
-        dir.join("crates/bin-a/Cargo.toml"),
+        dir.join("crates/user/Cargo.toml"),
         r#"[package]
-name = "bin-a"
+name = "user"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 serde.workspace = true
-lib-b = { path = "../lib-b" }
+pkg-a = { path = "../pkg-a" }
 "#,
     )
     .unwrap();
 
     fs::write(
-        dir.join("crates/bin-a/src/main.rs"),
+        dir.join("crates/user/src/main.rs"),
         "fn main() { println!(\"hello\"); }\n",
     )
     .unwrap();
 
     fs::write(
-        dir.join("crates/lib-b/Cargo.toml"),
+        dir.join("crates/pkg-a/Cargo.toml"),
         r#"[package]
-name = "lib-b"
+name = "pkg-a"
 version = "0.1.0"
 edition = "2021"
 
@@ -60,7 +60,7 @@ log.workspace = true
     )
     .unwrap();
 
-    fs::write(dir.join("crates/lib-b/src/lib.rs"), "// lib-b\n").unwrap();
+    fs::write(dir.join("crates/pkg-a/src/lib.rs"), "// pkg-a\n").unwrap();
 }
 
 #[test]
@@ -86,20 +86,20 @@ fn test_deps_command_creates_workspace_cache() {
         "Cargo.toml should exist"
     );
     assert!(
-        cache_dir.join("crates/bin-a/Cargo.toml").exists(),
-        "bin-a/Cargo.toml should exist"
+        cache_dir.join("crates/user/Cargo.toml").exists(),
+        "user/Cargo.toml should exist"
     );
     assert!(
-        cache_dir.join("crates/lib-b/Cargo.toml").exists(),
-        "lib-b/Cargo.toml should exist"
+        cache_dir.join("crates/pkg-a/Cargo.toml").exists(),
+        "pkg-a/Cargo.toml should exist"
     );
     assert!(
-        cache_dir.join("crates/bin-a/src/main.rs").exists(),
-        "bin-a/src/main.rs stub should exist"
+        cache_dir.join("crates/user/src/main.rs").exists(),
+        "user/src/main.rs stub should exist"
     );
     assert!(
-        cache_dir.join("crates/lib-b/src/lib.rs").exists(),
-        "lib-b/src/lib.rs stub should exist"
+        cache_dir.join("crates/pkg-a/src/lib.rs").exists(),
+        "pkg-a/src/lib.rs stub should exist"
     );
 
     let workspace_toml = fs::read_to_string(cache_dir.join("Cargo.toml")).unwrap();
@@ -108,12 +108,12 @@ fn test_deps_command_creates_workspace_cache() {
         "should have workspace section"
     );
     assert!(
-        workspace_toml.contains("crates/bin-a"),
-        "should include bin-a member"
+        workspace_toml.contains("crates/user"),
+        "should include user member"
     );
     assert!(
-        workspace_toml.contains("crates/lib-b"),
-        "should include lib-b member"
+        workspace_toml.contains("crates/pkg-a"),
+        "should include pkg-a member"
     );
 }
 
@@ -191,8 +191,8 @@ fn test_build_command() {
     );
 
     assert!(
-        workspace_dir.join("target/debug/bin-a").exists()
-            || workspace_dir.join("target/debug/bin-a.exe").exists(),
+        workspace_dir.join("target/debug/user").exists()
+            || workspace_dir.join("target/debug/user.exe").exists(),
         "binary should be built"
     );
 }
@@ -213,13 +213,13 @@ fn test_build_command_release() {
 
     assert!(
         output.status.success(),
-        "build --release command failed: {}",
+        "build --release failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
     assert!(
-        workspace_dir.join("target/release/bin-a").exists()
-            || workspace_dir.join("target/release/bin-a.exe").exists(),
+        workspace_dir.join("target/release/user").exists()
+            || workspace_dir.join("target/release/user.exe").exists(),
         "release binary should be built"
     );
 }
@@ -229,14 +229,14 @@ fn test_bin_filter() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-filter");
     fs::create_dir_all(&workspace_dir).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/common/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/user/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/order/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/pkg-a/src")).unwrap();
 
     fs::write(
         workspace_dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/api", "crates/worker", "crates/common"]
+members = ["crates/user", "crates/order", "crates/pkg-a"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -248,9 +248,9 @@ serde = "1"
     .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/common/Cargo.toml"),
+        workspace_dir.join("crates/pkg-a/Cargo.toml"),
         r#"[package]
-name = "common"
+name = "pkg-a"
 version = "0.1.0"
 edition = "2021"
 
@@ -259,83 +259,87 @@ serde.workspace = true
 "#,
     )
     .unwrap();
-    fs::write(workspace_dir.join("crates/common/src/lib.rs"), "").unwrap();
+    fs::write(workspace_dir.join("crates/pkg-a/src/lib.rs"), "").unwrap();
 
     fs::write(
-        workspace_dir.join("crates/api/Cargo.toml"),
+        workspace_dir.join("crates/user/Cargo.toml"),
         r#"[package]
-name = "api"
+name = "user"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-common = { path = "../common" }
+pkg-a = { path = "../pkg-a" }
 axum.workspace = true
 "#,
     )
     .unwrap();
-    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+    fs::write(
+        workspace_dir.join("crates/user/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/worker/Cargo.toml"),
+        workspace_dir.join("crates/order/Cargo.toml"),
         r#"[package]
-name = "worker"
+name = "order"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-common = { path = "../common" }
+pkg-a = { path = "../pkg-a" }
 tokio.workspace = true
 "#,
     )
     .unwrap();
     fs::write(
-        workspace_dir.join("crates/worker/src/main.rs"),
+        workspace_dir.join("crates/order/src/main.rs"),
         "fn main() {}",
     )
     .unwrap();
 
-    // Test filtering to only api (which depends on common)
+    // Test filtering to only user (which depends on pkg-a)
     let output = Command::new(workspace_cache_binary())
-        .args(["deps", "--bin", "api"])
+        .args(["deps", "--bin", "user"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "deps --bin api failed: {}",
+        "deps --bin user failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
     let cache_dir = workspace_dir.join(".workspace-cache");
 
-    // Should have api and common, but not worker
+    // Should have user and pkg-a, but not order
     assert!(
-        cache_dir.join("crates/api/Cargo.toml").exists(),
-        "should include api"
+        cache_dir.join("crates/user/Cargo.toml").exists(),
+        "should include user"
     );
     assert!(
-        cache_dir.join("crates/common/Cargo.toml").exists(),
-        "should include common (dependency of api)"
+        cache_dir.join("crates/pkg-a/Cargo.toml").exists(),
+        "should include pkg-a (dependency of user)"
     );
     assert!(
-        !cache_dir.join("crates/worker").exists(),
-        "should NOT include worker"
+        !cache_dir.join("crates/order").exists(),
+        "should NOT include order"
     );
 
     let workspace_toml = fs::read_to_string(cache_dir.join("Cargo.toml")).unwrap();
     assert!(
-        workspace_toml.contains("crates/api"),
-        "workspace should list api"
+        workspace_toml.contains("crates/user"),
+        "workspace should list user"
     );
     assert!(
-        workspace_toml.contains("crates/common"),
-        "workspace should list common"
+        workspace_toml.contains("crates/pkg-a"),
+        "workspace should list pkg-a"
     );
     assert!(
-        !workspace_toml.contains("crates/worker"),
-        "workspace should NOT list worker"
+        !workspace_toml.contains("crates/order"),
+        "workspace should NOT list order"
     );
 }
 
@@ -348,14 +352,14 @@ fn test_build_with_bin_filter() {
     create_test_workspace(&workspace_dir);
 
     let output = Command::new(workspace_cache_binary())
-        .args(["build", "--bin", "bin-a"])
+        .args(["build", "--bin", "user"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "build --bin bin-a failed: {}",
+        "build --bin user failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 }
@@ -365,21 +369,21 @@ fn test_binary_crate_creates_main_rs() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-bin");
     fs::create_dir_all(&workspace_dir).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/my-bin/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/user/src")).unwrap();
 
     fs::write(
         workspace_dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/my-bin"]
+members = ["crates/user"]
 resolver = "2"
 "#,
     )
     .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/my-bin/Cargo.toml"),
+        workspace_dir.join("crates/user/Cargo.toml"),
         r#"[package]
-name = "my-bin"
+name = "user"
 version = "0.1.0"
 edition = "2021"
 "#,
@@ -387,7 +391,7 @@ edition = "2021"
     .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/my-bin/src/main.rs"),
+        workspace_dir.join("crates/user/src/main.rs"),
         "fn main() { println!(\"real code\"); }",
     )
     .unwrap();
@@ -400,7 +404,7 @@ edition = "2021"
 
     assert!(output.status.success());
 
-    let stub_main = workspace_dir.join(".workspace-cache/crates/my-bin/src/main.rs");
+    let stub_main = workspace_dir.join(".workspace-cache/crates/user/src/main.rs");
     assert!(stub_main.exists(), "main.rs stub should exist");
 
     let content = fs::read_to_string(&stub_main).unwrap();
@@ -450,124 +454,131 @@ fn test_shared_target_dir_caches_deps() {
 #[test]
 fn test_resolve_command() {
     let temp = tempfile::tempdir().unwrap();
-    let workspace_dir = temp.path().join("test-workspace-deps-of");
+    let workspace_dir = temp.path().join("test-workspace-resolve");
     fs::create_dir_all(&workspace_dir).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/common/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/utils/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/user/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/order/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/pkg-a/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/pkg-b/src")).unwrap();
 
     fs::write(
         workspace_dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/api", "crates/worker", "crates/common", "crates/utils"]
+members = ["crates/user", "crates/order", "crates/pkg-a", "crates/pkg-b"]
 resolver = "2"
 "#,
     )
     .unwrap();
 
-    // common depends on utils
+    // pkg-a depends on pkg-b
     fs::write(
-        workspace_dir.join("crates/common/Cargo.toml"),
+        workspace_dir.join("crates/pkg-a/Cargo.toml"),
         r#"[package]
-name = "common"
+name = "pkg-a"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-utils = { path = "../utils" }
+pkg-b = { path = "../pkg-b" }
 "#,
     )
     .unwrap();
-    fs::write(workspace_dir.join("crates/common/src/lib.rs"), "").unwrap();
+    fs::write(workspace_dir.join("crates/pkg-a/src/lib.rs"), "").unwrap();
 
-    // utils has no workspace deps
+    // pkg-b has no workspace deps
     fs::write(
-        workspace_dir.join("crates/utils/Cargo.toml"),
+        workspace_dir.join("crates/pkg-b/Cargo.toml"),
         r#"[package]
-name = "utils"
+name = "pkg-b"
 version = "0.1.0"
 edition = "2021"
 "#,
     )
     .unwrap();
-    fs::write(workspace_dir.join("crates/utils/src/lib.rs"), "").unwrap();
+    fs::write(workspace_dir.join("crates/pkg-b/src/lib.rs"), "").unwrap();
 
-    // api depends on common (which depends on utils)
+    // user depends on pkg-a (which depends on pkg-b)
     fs::write(
-        workspace_dir.join("crates/api/Cargo.toml"),
+        workspace_dir.join("crates/user/Cargo.toml"),
         r#"[package]
-name = "api"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-common = { path = "../common" }
-"#,
-    )
-    .unwrap();
-    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
-
-    // worker depends on common
-    fs::write(
-        workspace_dir.join("crates/worker/Cargo.toml"),
-        r#"[package]
-name = "worker"
+name = "user"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-common = { path = "../common" }
+pkg-a = { path = "../pkg-a" }
 "#,
     )
     .unwrap();
     fs::write(
-        workspace_dir.join("crates/worker/src/main.rs"),
+        workspace_dir.join("crates/user/src/main.rs"),
         "fn main() {}",
     )
     .unwrap();
 
-    // Test resolve api: should return api, common, utils
+    // order depends on pkg-a
+    fs::write(
+        workspace_dir.join("crates/order/Cargo.toml"),
+        r#"[package]
+name = "order"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pkg-a = { path = "../pkg-a" }
+"#,
+    )
+    .unwrap();
+    fs::write(
+        workspace_dir.join("crates/order/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
+
+    // Test resolve user: should return user, pkg-a, pkg-b
     let output = Command::new(workspace_cache_binary())
-        .args(["resolve", "--bin", "api"])
+        .args(["resolve", "--bin", "user"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "resolve --bin api failed: {}",
+        "resolve --bin user failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let deps: Vec<&str> = stdout.lines().collect();
+    let deps: Vec<&str> = stdout
+        .lines()
+        .filter_map(|line| line.split_whitespace().nth(1))
+        .collect();
 
-    assert!(deps.contains(&"api"), "should include api itself");
+    assert!(deps.contains(&"user"), "should include user itself");
+    assert!(deps.contains(&"pkg-a"), "should include pkg-a (direct dep)");
     assert!(
-        deps.contains(&"common"),
-        "should include common (direct dep)"
+        deps.contains(&"pkg-b"),
+        "should include pkg-b (transitive dep)"
     );
-    assert!(
-        deps.contains(&"utils"),
-        "should include utils (transitive dep)"
-    );
-    assert!(!deps.contains(&"worker"), "should NOT include worker");
+    assert!(!deps.contains(&"order"), "should NOT include order");
 
-    // Test resolve worker: should return worker, common, utils
+    // Test resolve order: should return order, pkg-a, pkg-b
     let output = Command::new(workspace_cache_binary())
-        .args(["resolve", "--bin", "worker"])
+        .args(["resolve", "--bin", "order"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let deps: Vec<&str> = stdout.lines().collect();
+    let deps: Vec<&str> = stdout
+        .lines()
+        .filter_map(|line| line.split_whitespace().nth(1))
+        .collect();
 
-    assert!(deps.contains(&"worker"), "should include worker itself");
-    assert!(deps.contains(&"common"), "should include common");
-    assert!(deps.contains(&"utils"), "should include utils");
-    assert!(!deps.contains(&"api"), "should NOT include api");
+    assert!(deps.contains(&"order"), "should include order itself");
+    assert!(deps.contains(&"pkg-a"), "should include pkg-a");
+    assert!(deps.contains(&"pkg-b"), "should include pkg-b");
+    assert!(!deps.contains(&"user"), "should NOT include user");
 }
 
 #[test]
@@ -575,22 +586,22 @@ fn test_cargo_lock_filtering() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-lock-filter");
     fs::create_dir_all(&workspace_dir).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/user/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/order/src")).unwrap();
 
     fs::write(
         workspace_dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/api", "crates/worker"]
+members = ["crates/user", "crates/order"]
 resolver = "2"
 "#,
     )
     .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/api/Cargo.toml"),
+        workspace_dir.join("crates/user/Cargo.toml"),
         r#"[package]
-name = "api"
+name = "user"
 version = "0.1.0"
 edition = "2021"
 
@@ -599,12 +610,16 @@ serde = "1"
 "#,
     )
     .unwrap();
-    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+    fs::write(
+        workspace_dir.join("crates/user/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/worker/Cargo.toml"),
+        workspace_dir.join("crates/order/Cargo.toml"),
         r#"[package]
-name = "worker"
+name = "order"
 version = "0.1.0"
 edition = "2021"
 
@@ -614,7 +629,7 @@ tokio = { version = "1", features = ["rt"] }
     )
     .unwrap();
     fs::write(
-        workspace_dir.join("crates/worker/src/main.rs"),
+        workspace_dir.join("crates/order/src/main.rs"),
         "fn main() {}",
     )
     .unwrap();
@@ -641,16 +656,16 @@ tokio = { version = "1", features = ["rt"] }
         "original lockfile should contain tokio"
     );
 
-    // Generate cache with only api
+    // Generate cache with only user
     let output = Command::new(workspace_cache_binary())
-        .args(["deps", "--bin", "api"])
+        .args(["deps", "--bin", "user"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "deps --bin api failed: {}",
+        "deps --bin user failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
@@ -660,11 +675,11 @@ tokio = { version = "1", features = ["rt"] }
     // Filtered lock should have serde but not tokio
     assert!(
         filtered_lock.contains("serde"),
-        "filtered lockfile should contain serde (api dependency)"
+        "filtered lockfile should contain serde (user dependency)"
     );
     assert!(
         !filtered_lock.contains("tokio"),
-        "filtered lockfile should NOT contain tokio (worker-only dependency)"
+        "filtered lockfile should NOT contain tokio (order-only dependency)"
     );
 }
 
@@ -673,13 +688,13 @@ fn test_workspace_dependencies_filtering() {
     let temp = tempfile::tempdir().unwrap();
     let workspace_dir = temp.path().join("test-workspace-deps-filter");
     fs::create_dir_all(&workspace_dir).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/api/src")).unwrap();
-    fs::create_dir_all(workspace_dir.join("crates/worker/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/user/src")).unwrap();
+    fs::create_dir_all(workspace_dir.join("crates/order/src")).unwrap();
 
     fs::write(
         workspace_dir.join("Cargo.toml"),
         r#"[workspace]
-members = ["crates/api", "crates/worker"]
+members = ["crates/user", "crates/order"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -691,9 +706,9 @@ log = "0.4"
     .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/api/Cargo.toml"),
+        workspace_dir.join("crates/user/Cargo.toml"),
         r#"[package]
-name = "api"
+name = "user"
 version = "0.1.0"
 edition = "2021"
 
@@ -702,12 +717,16 @@ serde.workspace = true
 "#,
     )
     .unwrap();
-    fs::write(workspace_dir.join("crates/api/src/main.rs"), "fn main() {}").unwrap();
+    fs::write(
+        workspace_dir.join("crates/user/src/main.rs"),
+        "fn main() {}",
+    )
+    .unwrap();
 
     fs::write(
-        workspace_dir.join("crates/worker/Cargo.toml"),
+        workspace_dir.join("crates/order/Cargo.toml"),
         r#"[package]
-name = "worker"
+name = "order"
 version = "0.1.0"
 edition = "2021"
 
@@ -718,21 +737,21 @@ log.workspace = true
     )
     .unwrap();
     fs::write(
-        workspace_dir.join("crates/worker/src/main.rs"),
+        workspace_dir.join("crates/order/src/main.rs"),
         "fn main() {}",
     )
     .unwrap();
 
-    // Generate cache with only api
+    // Generate cache with only user
     let output = Command::new(workspace_cache_binary())
-        .args(["deps", "--bin", "api"])
+        .args(["deps", "--bin", "user"])
         .current_dir(&workspace_dir)
         .output()
         .unwrap();
 
     assert!(
         output.status.success(),
-        "deps --bin api failed: {}",
+        "deps --bin user failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
