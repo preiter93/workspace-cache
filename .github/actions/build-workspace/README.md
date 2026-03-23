@@ -112,7 +112,7 @@ jobs:
 
 Run tests and other cargo commands from `.workspace-cache` where all sources and dependencies are built.
 
-Dependencies are cached using `{OS}-workspace-cache-deps-{profile}-{Cargo.lock hash}`, so they only rebuild when the profile or Cargo.lock changes.
+Dependencies are cached using `{OS}-workspace-cache-deps-{binary}-{profile}-{Cargo.lock hash}`, so they only rebuild when the binary, profile, or Cargo.lock changes.
 
 ## License
 
