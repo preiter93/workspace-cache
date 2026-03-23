@@ -132,120 +132,7 @@ Use `--fast` to skip dependency resolution. This results in a less optimized cac
 workspace-cache dockerfile --bin user --fast -o Dockerfile
 ```
 
-## CI Usage (without Docker)
 
-> **Note:** For most CI use cases, traditional cargo caching (e.g., [Swatinem/rust-cache](https://github.com/Swatinem/rust-cache)) is simpler and likely faster. workspace-cache is primarily designed for Docker builds. Use these actions only if you need isolated per-service caching in a large monorepo.
-
-### GitHub Action (Recommended)
-
-The simplest way to use workspace-cache in CI is with the provided composite actions:
-
-```yaml
-- name: Install workspace-cache
-  uses: preiter93/workspace-cache/.github/actions/install-workspace-cache@main
-
-- name: Build
-  uses: preiter93/workspace-cache/.github/actions/build-workspace@main
-  with:
-    binary: user
-    working-directory: services
-
-- name: Run tests
-  working-directory: services/.workspace-cache
-  run: cargo test -p user --verbose
-
-- name: Clippy
-  working-directory: services/.workspace-cache
-  run: cargo clippy -p user -- -D warnings
-```
-
-**Important:** Run tests and other cargo commands from `services/.workspace-cache` where the complete workspace is built.
-
-**Note:** The build action compiles tests by default (`build-tests: true`), so dev-dependencies are cached and test compilation is fast.
-
-See the action READMEs for more options:
-- [install-workspace-cache](.github/actions/install-workspace-cache/README.md)
-- [build-workspace](.github/actions/build-workspace/README.md)
-
-### Complete Example with Matrix Strategy
-
-```yaml
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [user, order, payment]
-    steps:
-      - uses: actions/checkout@v6
-      
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      
-      - name: Install workspace-cache
-        uses: preiter93/workspace-cache/.github/actions/install-workspace-cache@main
-      
-      - name: Build
-        uses: preiter93/workspace-cache/.github/actions/build-workspace@main
-        with:
-          binary: ${{ matrix.service }}
-          working-directory: services
-      
-      - name: Run tests
-        working-directory: services/.workspace-cache
-        run: cargo test -p ${{ matrix.service }} --verbose
-      
-      - name: Clippy
-        working-directory: services/.workspace-cache
-        run: cargo clippy -p ${{ matrix.service }} -- -D warnings
-```
-
-### Manual Setup
-
-You can also set up workspace-cache manually for more control:
-
-```yaml
-- name: Install workspace-cache
-  run: cargo install workspace-cache
-
-- name: Generate minimal workspace
-  run: workspace-cache deps --bin user
-
-- name: Get cache key for dependencies
-  id: cache-key
-  run: |
-    HASH="${{ hashFiles('.workspace-cache/Cargo.lock') }}"
-    echo "key=${{ runner.os }}-workspace-cache-deps-${HASH}" >> $GITHUB_OUTPUT
-
-- name: Cache dependencies
-  uses: actions/cache@v5
-  with:
-    path: .workspace-cache/target
-    key: ${{ steps.cache-key.outputs.key }}
-    restore-keys: |
-      ${{ runner.os }}-workspace-cache-deps-
-
-- name: Build dependencies (cached when Cargo.lock unchanged)
-  run: cargo build --release
-  working-directory: .workspace-cache
-
-- name: Copy real sources
-  run: |
-    workspace-cache members --bin user | while read path name; do
-      rm -rf .workspace-cache/$path
-      cp -r $path .workspace-cache/$path
-    done
-
-- name: Build binary
-  run: |
-    PACKAGES=$(workspace-cache members --bin user | awk '{print "-p " $2}' | tr '\n' ' ')
-    cargo clean --release $PACKAGES
-    cargo build --release --bin user
-  working-directory: .workspace-cache
-```
-
-The cache key is based on the generated `.workspace-cache/Cargo.lock`, so dependencies are only rebuilt when they change. On cache hits, the dependency build step completes in seconds.
 
 ## CLI Reference
 
@@ -307,7 +194,7 @@ the final binary from within `.workspace-cache/` after copying real sources.
 
 ## Example
 
-See [rust-microservices](https://github.com/preiter93/rust-microservices) for a complete example using workspace-cache in a real microservices project with Docker and CI/CD.
+See [rust-microservices](https://github.com/preiter93/rust-microservices) for a complete example using workspace-cache in a real microservices project with Docker.
 
 ## License
 
