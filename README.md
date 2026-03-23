@@ -87,8 +87,6 @@ This optimization applies to both the dependency build stage and the binary buil
 | Fast dependency build | ❌ | ✅ ([`--fast`](#fast-mode)) |
 | Workspace optimization (binary) | ❌ | ✅ ([`Optimization`](#workspace-optimization)) |
 | Dockerfile generation | ❌ | ✅ ([`Dockerfile`](#usage)) |
-| GitHub Actions | ❌ | ✅ ([`CI Usage`](#ci-usage-without-docker)) |
-| Get dependent workspace members | ❌ | ✅ ([`members`](#show-workspace-members)) |
 
 ## Usage
 
@@ -135,6 +133,8 @@ workspace-cache dockerfile --bin user --fast -o Dockerfile
 ```
 
 ## CI Usage (without Docker)
+
+> **Note:** For most CI use cases, traditional cargo caching (e.g., [Swatinem/rust-cache](https://github.com/Swatinem/rust-cache)) is simpler and likely faster. workspace-cache is primarily designed for Docker builds. Use these actions only if you need isolated per-service caching in a large monorepo.
 
 ### GitHub Action (Recommended)
 
